@@ -4,6 +4,8 @@ A 3D cross-platform **multiplayer** island fishing game that runs in the browser
 Built with **Three.js** and **Socket.io** — up to **10 players** on one island at
 the same time.
 
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/Nta0039/island-fishing)
+
 ---
 
 ## What's in the game
