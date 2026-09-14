@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+<meta name="theme-color" content="#0b2239" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<title>Island Fishing — Multiplayer</title>
+<link rel="stylesheet" href="/css/style.css" />
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+</head>
+<body>
+<canvas id="game"></canvas>
+
+<!-- ============ In-game HUD ============ -->
+<div id="hud" class="hidden">
+  <div id="topbar">
+    <div id="brand"><img class="brand-art" src="/img/title.png" alt="Island Fishing" /></div>
+    <div id="topbar-right">
+      <div id="stats"><span id="online-count">0</span><span class="sep">/</span><span id="online-max">10</span> online</div>
+      <button id="codex-btn" title="Fish Encyclopedia"><span class="codex-icon">📖</span><span class="codex-label">Encyclopedia</span></button>
+    </div>
+  </div>
+
+  <div id="catchlog">
+    <div class="log-title">Catch Feed</div>
+    <ul id="catchlog-list"></ul>
+  </div>
+
+  <!-- Basic control hints, top-left -->
+  <div id="controls-help">
+    <div class="ch-title">Controls</div>
+    <ul class="ch-pc">
+      <li><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> or <kbd>↑</kbd><kbd>←</kbd><kbd>↓</kbd><kbd>→</kbd> move</li>
+      <li><b>Drag</b> the view to look around</li>
+      <li><b>Space</b> hold to reel in</li>
+      <li><b>Click</b> the on-screen buttons to act</li>
+      <li><b>Esc</b> closes a panel or steps back</li>
+    </ul>
+    <ul class="ch-touch">
+      <li><b>Joystick</b> (bottom-left) to move</li>
+      <li><b>Drag</b> the view to look around</li>
+      <li><b>Hold</b> bottom-right to reel in</li>
+      <li><b>Tap</b> the on-screen buttons to act</li>
+    </ul>
+  </div>
+
+  <div id="hint"></div>
+
+  <button id="fishing-btn" class="hidden">[Fishing]</button>
+  <button id="collect-btn" class="hidden">[Collect]</button>
+  <button id="sit-btn" class="hidden">[Sit]</button>
+  <button id="use-btn" class="hidden">[Use]</button>
+  <button id="trade-btn" class="hidden">[Trade]</button>
+  <button id="hook-icon" class="hidden" aria-label="Hook">!</button>
+
+  <!-- Minigame bar, positioned above the player's head -->
+  <div id="minigame" class="hidden">
+    <div id="mg-bar">
+      <div id="mg-fill"></div>
+      <div id="mg-target"></div>
+      <div id="mg-indicator"></div>
+    </div>
+    <div id="mg-row">
+      <div id="mg-label">Hold to reel…</div>
+      <button id="mg-cancel">✕</button>
+    </div>
+  </div>
+
+  <!-- Mobile virtual joystick (bottom-left) -->
+  <div id="joystick-zone" class="touch-only">
+    <div id="joystick-base"><div id="joystick-knob"></div></div>
+  </div>
+
+  <!-- Mobile reel area (bottom-right) -->
+  <div id="reel-zone" class="touch-only hidden">
+    <div id="reel-btn">HOLD<br>TO REEL</div>
+  </div>
+
+  <div id="toasts"></div>
+
+  <!-- Big card that pops up when you land a fish -->
+  <div id="catch-card" class="hidden"></div>
+
+  <!-- Fish Encyclopedia -->
+  <div id="codex-panel" class="hidden">
+    <div class="codex-card">
+      <div class="codex-head">
+        <div class="codex-title">📖 Fish Encyclopedia</div>
+        <div class="codex-progress"><span id="codex-count">0</span> / <span id="codex-total">20</span> discovered</div>
+        <button id="codex-close" aria-label="Close">✕</button>
+      </div>
+      <div id="codex-grid" class="codex-grid"></div>
+    </div>
+  </div>
+
+  <!-- Merchant trading panel -->
+  <div id="trade-panel" class="hidden">
+    <div class="trade-card">
+      <div class="trade-head">
+        <div class="trade-title">🧙 David</div>
+        <div class="trade-coins">🪙 <span id="trade-coins">0</span></div>
+        <button id="trade-close" aria-label="Close">✕</button>
+      </div>
+      <div class="trade-tabs">
+        <button class="trade-tab active" data-tab="sell">Sell Fish</button>
+        <button class="trade-tab" data-tab="shop">Shop</button>
+      </div>
+      <div id="trade-body" class="trade-body"></div>
+      <div id="trade-msg" class="trade-msg"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ Start screen ============ -->
+<div id="start-screen">
+  <div class="panel">
+    <img id="title-art" src="/img/title.png" alt="Island Fishing" />
+    <p class="sub">3D multiplayer fishing · up to 10 players</p>
+    <input id="name-input" maxlength="14" placeholder="Enter your name" autocomplete="off" spellcheck="false" />
+
+    <div class="pick-row">
+      <div class="pick-label">Outfit colour</div>
+      <div id="color-picker" class="color-picker"></div>
+    </div>
+
+    <button id="play-btn">Play</button>
+    <div class="controls-help">
+      <p><b>PC</b> — WASD or arrows to move · drag mouse to look · hold <b>Space</b> to reel</p>
+      <p><b>Mobile / Tablet</b> — left joystick to move · drag to look · hold bottom-right to reel</p>
+    </div>
+    <div id="start-error" class="error"></div>
+  </div>
+</div>
+
+<div id="loading" class="hidden"><div class="spinner"></div><span>Connecting…</span></div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script type="module" src="/js/main.js"></script>
+</body>
+</html>

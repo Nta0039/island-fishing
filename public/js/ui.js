@@ -1,0 +1,556 @@
+import * as THREE from 'three';
+
+const $ = (id) => document.getElementById(id);
+
+export const dom = {
+  hud: $('hud'),
+  startScreen: $('start-screen'),
+  loading: $('loading'),
+  brand: $('brand'),
+  onlineCount: $('online-count'),
+  onlineMax: $('online-max'),
+  catchlogList: $('catchlog-list'),
+  hint: $('hint'),
+  fishingBtn: $('fishing-btn'),
+  collectBtn: $('collect-btn'),
+  sitBtn: $('sit-btn'),
+  useBtn: $('use-btn'),
+  hookIcon: $('hook-icon'),
+  minigame: $('minigame'),
+  mgFill: $('mg-fill'),
+  mgTarget: $('mg-target'),
+  mgIndicator: $('mg-indicator'),
+  mgLabel: $('mg-label'),
+  mgCancel: $('mg-cancel'),
+  joystickZone: $('joystick-zone'),
+  joystickBase: $('joystick-base'),
+  joystickKnob: $('joystick-knob'),
+  reelZone: $('reel-zone'),
+  toasts: $('toasts'),
+  nameInput: $('name-input'),
+  playBtn: $('play-btn'),
+  startError: $('start-error'),
+  colorPicker: $('color-picker'),
+  tradeBtn: $('trade-btn'),
+  tradePanel: $('trade-panel'),
+  tradeCoins: $('trade-coins'),
+  tradeClose: $('trade-close'),
+  tradeBody: $('trade-body'),
+  tradeMsg: $('trade-msg'),
+  tradeTabs: Array.from(document.querySelectorAll('.trade-tab')),
+  catchCard: $('catch-card'),
+  codexBtn: $('codex-btn'),
+  codexPanel: $('codex-panel'),
+  codexGrid: $('codex-grid'),
+  codexCount: $('codex-count'),
+  codexTotal: $('codex-total'),
+  codexClose: $('codex-close'),
+};
+
+/* ------------------------------------------------------------------ */
+/*  Fish icons                                                         */
+/* ------------------------------------------------------------------ */
+
+/**
+ * The catch art lives in /img/fish, one file per species, and every file
+ * is named after the species itself — so the two can never drift apart.
+ * Anything not in this list (beach collectibles, say) falls back to its
+ * emoji rather than firing a request for art that does not exist.
+ */
+const FISH_ART = new Set([
+  'Anchovy', 'Sardine', 'Mackerel', 'Herring', 'Sprat', 'Smelt', 'Perch', 'Bleak',
+  'Sea Bass', 'Red Snapper', 'Bluefin Tuna', 'Rainbow Trout', 'Mahi-Mahi', 'Barracuda',
+  'Swordfish', 'Blue Marlin', 'Sturgeon', 'Anglerfish',
+  'Golden Leviathan', 'Crystal Koi',
+]);
+
+export function fishIconUrl(fish) {
+  if (!fish || !FISH_ART.has(fish.name)) return null;
+  return `/img/fish/${encodeURIComponent(fish.name)}.png`;
+}
+
+function iconHtml(fish, cls = 'fish-icon') {
+  const url = fishIconUrl(fish);
+  const emoji = (fish && fish.emoji) || '🐟';
+  if (!url) return `<span class="${cls} emoji">${emoji}</span>`;
+  return `<img class="${cls}" src="${url}" alt="" draggable="false" data-emoji="${emoji}">`;
+}
+
+/* Swap any fish icon that fails to load for its emoji. */
+document.addEventListener('error', (e) => {
+  const el = e.target;
+  if (!el || el.tagName !== 'IMG' || !el.dataset || !el.dataset.emoji) return;
+  const span = document.createElement('span');
+  span.className = `${el.className} emoji`;
+  span.textContent = el.dataset.emoji;
+  el.replaceWith(span);
+}, true);
+
+const _v = new THREE.Vector3();
+
+export function projectToScreen(v3, camera) {
+  _v.copy(v3).project(camera);
+  return {
+    x: (_v.x * 0.5 + 0.5) * window.innerWidth,
+    y: (-_v.y * 0.5 + 0.5) * window.innerHeight,
+    visible: _v.z < 1,
+  };
+}
+
+export function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, (c) => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+  }[c]));
+}
+
+/* ------------------------------ Start screen ------------------------------ */
+
+export function onPlay(handler) {
+  dom.playBtn.addEventListener('click', handler);
+  dom.nameInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') handler();
+  });
+}
+
+/* ------------------------------ Colour picker ------------------------------ */
+
+let chosenColor = null;
+
+/** Builds the swatch grid on the start screen and remembers the pick. */
+export function initColorPicker(colors, initial = 0) {
+  if (!dom.colorPicker) return;
+  chosenColor = colors[initial] || colors[0];
+  dom.colorPicker.innerHTML = '';
+  colors.forEach((c, i) => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = `swatch${i === initial ? ' sel' : ''}`;
+    b.style.background = c;
+    b.dataset.color = c;
+    b.title = c;
+    b.setAttribute('aria-label', `Outfit colour ${i + 1}`);
+    b.addEventListener('click', () => {
+      chosenColor = c;
+      for (const el of dom.colorPicker.querySelectorAll('.swatch')) {
+        el.classList.toggle('sel', el.dataset.color === c);
+      }
+    });
+    dom.colorPicker.appendChild(b);
+  });
+}
+
+export function getChosenColor() {
+  return chosenColor;
+}
+
+/** Flags the name field so a blank submission is obvious. */
+export function markNameInvalid(on) {
+  if (dom.nameInput) dom.nameInput.classList.toggle('invalid', !!on);
+}
+
+/** Clears the name error as soon as the player starts typing. */
+export function onNameInput(handler) {
+  if (dom.nameInput) dom.nameInput.addEventListener('input', handler);
+}
+
+export function setStartError(msg) {
+  dom.startError.textContent = msg || '';
+}
+
+export function setLoading(on) {
+  dom.loading.classList.toggle('hidden', !on);
+}
+
+export function showGame(on) {
+  dom.startScreen.classList.toggle('hidden', on);
+  dom.hud.classList.toggle('hidden', !on);
+  setLoading(false);
+}
+
+/** Fades the menu out (and back in on a failed join). */
+export function fadeStartScreen(on) {
+  if (!dom.startScreen) return;
+  dom.startScreen.classList.toggle('fading', on);
+  if (!on) dom.startScreen.classList.remove('hidden');
+}
+
+/* ------------------------------ HUD helpers ------------------------------ */
+
+export function setOnline(count, max) {
+  dom.onlineCount.textContent = count;
+  if (max) dom.onlineMax.textContent = max;
+}
+
+export function setHint(text) {
+  dom.hint.textContent = text || '';
+  dom.hint.classList.toggle('show', !!text);
+}
+
+export function showFishingButton(on) {
+  dom.fishingBtn.classList.toggle('hidden', !on);
+}
+
+export function showHook(on) {
+  dom.hookIcon.classList.toggle('hidden', !on);
+}
+
+export function showCollectButton(on, label) {
+  dom.collectBtn.classList.toggle('hidden', !on);
+  if (on && label) dom.collectBtn.textContent = `[Collect ${label}]`;
+}
+
+export function onCollectClick(handler) {
+  dom.collectBtn.addEventListener('click', handler);
+}
+
+export function showSitButton(on, label) {
+  dom.sitBtn.classList.toggle('hidden', !on);
+  if (on) dom.sitBtn.textContent = label ? `[${label}]` : '[Sit]';
+}
+
+export function onSitClick(handler) {
+  dom.sitBtn.addEventListener('click', handler);
+}
+
+/* ---------------------------- "[Use]" prompt ---------------------------- */
+
+export function showUseButton(on, label) {
+  dom.useBtn.classList.toggle('hidden', !on);
+  if (on) dom.useBtn.textContent = label ? `[${label}]` : '[Use]';
+  dom.useBtn.classList.toggle('exit', !!(on && label === 'Exit'));
+}
+
+export function onUseClick(handler) {
+  dom.useBtn.addEventListener('click', handler);
+}
+
+/** Small floating "+item" pickup popup anchored to a screen position. */
+export function pickupPopup(screen, text) {
+  const div = document.createElement('div');
+  div.className = 'pickup';
+  div.textContent = text;
+  div.style.left = `${screen.x}px`;
+  div.style.top = `${screen.y}px`;
+  dom.hud.appendChild(div);
+  setTimeout(() => div.remove(), 1200);
+}
+
+export function placeHook(screen) {
+  if (!screen) return;
+  dom.hookIcon.style.left = `${screen.x}px`;
+  dom.hookIcon.style.top = `${screen.y}px`;
+}
+
+export function onFishingClick(handler) {
+  dom.fishingBtn.addEventListener('click', handler);
+}
+
+export function onHookClick(handler) {
+  dom.hookIcon.addEventListener('click', handler);
+}
+
+export function onCancelClick(handler) {
+  dom.mgCancel.addEventListener('click', handler);
+}
+
+/* ------------------------------ Minigame ------------------------------ */
+
+export function showMinigame(on, isTouch) {
+  dom.minigame.classList.toggle('hidden', !on);
+  dom.reelZone.classList.toggle('hidden', !on);
+  if (on) {
+    dom.mgLabel.textContent = isTouch ? 'Hold bottom-right!' : 'Hold SPACE!';
+  } else {
+    dom.reelZone.classList.remove('active');
+  }
+}
+
+export function positionMinigame(screen, indicator, targetStart, targetWidth, progress, inTarget) {
+  if (screen) {
+    dom.minigame.style.left = `${screen.x}px`;
+    dom.minigame.style.top = `${screen.y}px`;
+  }
+  dom.mgIndicator.style.left = `${indicator * 100}%`;
+  dom.mgTarget.style.left = `${targetStart * 100}%`;
+  dom.mgTarget.style.width = `${targetWidth * 100}%`;
+  dom.mgFill.style.width = `${Math.min(1, progress) * 100}%`;
+  dom.mgFill.classList.toggle('in', !!inTarget);
+}
+
+/* ------------------------------ Merchant ------------------------------ */
+
+let tradeState = null;
+let tradeActionHandler = null;
+let tradeMsgTimer = null;
+
+export function onTradeClick(handler) {
+  dom.tradeBtn.addEventListener('click', handler);
+}
+
+export function onTradeClose(handler) {
+  dom.tradeClose.addEventListener('click', handler);
+}
+
+export function onTradeAction(handler) {
+  tradeActionHandler = handler;
+}
+
+export function showTradeButton(on) {
+  dom.tradeBtn.classList.toggle('hidden', !on);
+}
+
+export function showTradePanel(on) {
+  dom.tradePanel.classList.toggle('hidden', !on);
+  if (!on) setTradeMessage('');
+}
+
+export function setTradeMessage(msg, isError) {
+  dom.tradeMsg.textContent = msg || '';
+  dom.tradeMsg.classList.toggle('err', !!isError);
+  if (tradeMsgTimer) clearTimeout(tradeMsgTimer);
+  if (msg) {
+    tradeMsgTimer = setTimeout(() => {
+      dom.tradeMsg.textContent = '';
+    }, 3200);
+  }
+}
+
+const RARITY_LABEL = { common: 'Common', medium: 'Medium', high: 'High', rare: 'Rare' };
+
+function swatchStyle(item) {
+  const base = item.color;
+  const cap = item.cap || base;
+  return `background:linear-gradient(135deg, ${base} 0%, ${base} 55%, ${cap} 55%, ${cap} 100%);`;
+}
+
+function itemButton(item, state) {
+  if (state.equipped[item.slot] === item.id) {
+    return '<button class="trade-btn-s" disabled>Equipped</button>';
+  }
+  if (state.owned.includes(item.id)) {
+    return `<button class="trade-btn-s ghost" data-action="equip" data-item="${item.id}">Equip</button>`;
+  }
+  const afford = state.coins >= item.price;
+  return `<button class="trade-btn-s gold" data-action="buy" data-item="${item.id}" ${afford ? '' : 'disabled'}>🪙 ${item.price}</button>`;
+}
+
+function renderSell(state) {
+  const entries = Object.entries(state.inventory || {})
+    .map(([id, count]) => ({ fish: state.fishById.get(id), count }))
+    .filter((e) => e.fish && e.count > 0);
+
+  if (entries.length === 0) {
+    return '<div class="trade-empty">Your cooler is empty.<br>Catch some fish and come back!</div>';
+  }
+
+  const total = entries.reduce((sum, e) => sum + state.rarityValue[e.fish.rarity] * e.count, 0);
+  const order = { rare: 0, high: 1, medium: 2, common: 3 };
+  entries.sort((a, b) => order[a.fish.rarity] - order[b.fish.rarity] || a.fish.name.localeCompare(b.fish.name));
+
+  let html = `<button class="trade-sellall" data-action="sellall">Sell Everything · 🪙 ${total}</button>`;
+
+  for (const e of entries) {
+    const unit = state.rarityValue[e.fish.rarity];
+    html += `
+      <div class="trade-row">
+        ${iconHtml(e.fish)}
+        <span class="info">
+          <span class="nm">${escapeHtml(e.fish.name)}</span>
+          <span class="sub">${RARITY_LABEL[e.fish.rarity]} · 🪙 ${unit} each</span>
+        </span>
+        <span class="cnt">×${e.count}</span>
+        <button class="trade-btn-s ghost" data-action="sell" data-fish="${e.fish.id}" data-qty="1">Sell 1</button>
+        <button class="trade-btn-s" data-action="sell" data-fish="${e.fish.id}" data-qty="${e.count}">All</button>
+      </div>`;
+  }
+  return html;
+}
+
+function renderShop(state) {
+  const section = (title, items) => {
+    let html = `<div class="trade-section">${title}</div>`;
+    for (const item of items) {
+      const owned = state.owned.includes(item.id);
+      const equipped = state.equipped[item.slot] === item.id;
+      const cls = equipped ? 'trade-row equipped' : owned ? 'trade-row owned' : 'trade-row';
+      html += `
+        <div class="${cls}">
+          <span class="sw" style="${swatchStyle(item)}"></span>
+          <span class="info">
+            <span class="nm">${escapeHtml(item.name)}</span>
+            <span class="sub">${escapeHtml(item.desc || '')}</span>
+          </span>
+          ${itemButton(item, state)}
+        </div>`;
+    }
+    return html;
+  };
+
+  return section('Fishing Rods', state.rods) + section('Bobbers', state.bobbers);
+}
+
+export function renderTrade(state) {
+  tradeState = state;
+  dom.tradeCoins.textContent = state.coins;
+  for (const tab of dom.tradeTabs) {
+    tab.classList.toggle('active', tab.dataset.tab === state.tab);
+  }
+  dom.tradeBody.innerHTML = state.tab === 'shop' ? renderShop(state) : renderSell(state);
+}
+
+dom.tradeTabs.forEach((tab) => {
+  tab.addEventListener('click', () => {
+    if (!tradeState) return;
+    tradeState.tab = tab.dataset.tab;
+    renderTrade(tradeState);
+  });
+});
+
+dom.tradeBody.addEventListener('click', (e) => {
+  const btn = e.target.closest('[data-action]');
+  if (!btn || btn.disabled) return;
+  const action = btn.dataset.action;
+  if (action === 'sellall') {
+    if (tradeActionHandler) tradeActionHandler({ type: 'sellAll' });
+  } else if (action === 'sell') {
+    if (tradeActionHandler) {
+      tradeActionHandler({
+        type: 'sell',
+        fishId: btn.dataset.fish,
+        qty: Number(btn.dataset.qty) || 1,
+      });
+    }
+  } else if (action === 'buy') {
+    if (tradeActionHandler) tradeActionHandler({ type: 'buy', itemId: btn.dataset.item });
+  } else if (action === 'equip') {
+    if (tradeActionHandler) tradeActionHandler({ type: 'equip', itemId: btn.dataset.item });
+  }
+});
+
+/* ------------------------- Fish Encyclopedia ------------------------- */
+
+export function onCodexClick(handler) {
+  if (dom.codexBtn) dom.codexBtn.addEventListener('click', handler);
+}
+
+export function onCodexClose(handler) {
+  if (dom.codexClose) dom.codexClose.addEventListener('click', handler);
+  if (dom.codexPanel) {
+    dom.codexPanel.addEventListener('click', (e) => {
+      if (e.target === dom.codexPanel) handler();
+    });
+  }
+}
+
+export function showCodex(on) {
+  if (dom.codexPanel) dom.codexPanel.classList.toggle('hidden', !on);
+}
+
+export function isCodexOpen() {
+  return !!dom.codexPanel && !dom.codexPanel.classList.contains('hidden');
+}
+
+/**
+ * The gallery: every species in the game, silhouetted until it has been
+ * landed at least once. Caught species light up and reveal their blurb.
+ */
+export function renderCodex(state) {
+  const found = state.discovered || {};
+  const list = state.fish || [];
+  let unlocked = 0;
+
+  const entries = list.map((f) => {
+    const got = !!found[f.id];
+    if (got) unlocked++;
+    const art = iconHtml(f);
+    return (
+      `<div class="codex-entry rarity-${f.rarity} ${got ? 'found' : 'locked'}">` +
+        art +
+        `<div class="ce-name">${escapeHtml(f.name)}</div>` +
+        `<div class="ce-rarity">${f.rarity}</div>` +
+        (got
+          ? `<div class="ce-desc">${escapeHtml(f.desc || '')}</div>`
+          : `<div class="ce-locked">Not yet caught</div>`) +
+      `</div>`
+    );
+  });
+
+  if (dom.codexGrid) dom.codexGrid.innerHTML = entries.join('');
+  if (dom.codexCount) dom.codexCount.textContent = String(unlocked);
+  if (dom.codexTotal) dom.codexTotal.textContent = String(list.length);
+  return unlocked;
+}
+
+/* ------------------------------ Notifications ------------------------------ */
+
+export function toast(playerName, fish) {
+  const div = document.createElement('div');
+  div.className = `toast rarity-${fish.rarity}`;
+  div.innerHTML =
+    iconHtml(fish) +
+    `<span class="t-body"><b>${escapeHtml(playerName)}</b> caught a ` +
+    `<span class="t-name">${escapeHtml(fish.name)}</span>` +
+    `<span class="t-rarity">${fish.rarity}</span></span>`;
+  dom.toasts.appendChild(div);
+  while (dom.toasts.children.length > 4) dom.toasts.removeChild(dom.toasts.firstChild);
+  setTimeout(() => {
+    div.classList.add('out');
+    setTimeout(() => div.remove(), 500);
+  }, 4200);
+}
+
+let catchCardTimer = null;
+
+/**
+ * The big "you caught it" card: the species art, its name, rarity and
+ * sell value, popping in over the middle of the screen for a moment.
+ */
+export function showCatchCard(fish, opts = {}) {
+  if (!fish || !dom.catchCard) return;
+  const card = dom.catchCard;
+
+  card.classList.remove('hidden', 'show', 'out', 'rarity-common', 'rarity-medium', 'rarity-high', 'rarity-rare');
+  card.classList.add(`rarity-${fish.rarity}`);
+  card.innerHTML =
+    `<div class="cc-kicker">${opts.isNew ? 'New species!' : 'You caught'}</div>` +
+    iconHtml(fish) +
+    `<div class="cc-name">${escapeHtml(fish.name)}</div>` +
+    `<div class="cc-meta">` +
+      `<span class="cc-rarity">${fish.rarity}</span>` +
+      (opts.value ? `<span class="cc-value">🪙 ${opts.value}</span>` : '') +
+    `</div>`;
+
+  /* Force a reflow so the pop animation replays on a repeat catch. */
+  void card.offsetWidth;
+  card.classList.add('show');
+
+  clearTimeout(catchCardTimer);
+  catchCardTimer = setTimeout(() => {
+    card.classList.remove('show');
+    card.classList.add('out');
+    setTimeout(() => card.classList.add('hidden'), 320);
+  }, opts.duration || 2600);
+}
+
+/** Plain notification toast (used for the merchant's chatter). */
+export function notify(text) {
+  const div = document.createElement('div');
+  div.className = 'toast rarity-common notify';
+  div.innerHTML = `<span class="t-emoji">🧔</span><span class="t-body">${escapeHtml(text)}</span>`;
+  dom.toasts.appendChild(div);
+  while (dom.toasts.children.length > 4) dom.toasts.removeChild(dom.toasts.firstChild);
+  setTimeout(() => {
+    div.classList.add('out');
+    setTimeout(() => div.remove(), 500);
+  }, 4200);
+}
+
+export function addCatchLog(playerName, fish) {
+  const li = document.createElement('li');
+  li.innerHTML = `${iconHtml(fish)} <b>${escapeHtml(playerName)}</b> · ${escapeHtml(fish.name)}`;
+  li.style.color = `var(--rarity-${fish.rarity})`;
+  dom.catchlogList.prepend(li);
+  while (dom.catchlogList.children.length > 9) {
+    dom.catchlogList.removeChild(dom.catchlogList.lastChild);
+  }
+}
