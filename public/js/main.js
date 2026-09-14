@@ -28,6 +28,7 @@ import { createShips } from './ships.js';
 import { createAircraft } from './aircraft.js';
 import { createMarineLife } from './marinelife.js';
 import { createReef } from './reef.js';
+import * as Music from './music.js';
 import * as UI from './ui.js';
 
 /* ------------------------------------------------------------------ */
@@ -681,10 +682,19 @@ UI.onPlay(() => {
   UI.markNameInvalid(false);
   UI.setStartError('');
   connecting = true;
+  /* This click is the user gesture that unlocks audio playback, so the
+     background music starts here rather than on page load. */
+  Music.start();
+  UI.setMusicMuted(Music.isMuted());
   /* Start the fly-in immediately on confirm, so the swoop runs while the
      server is still shaking hands. */
   beginIntro();
   connect(name, UI.getChosenColor());
+});
+
+/* Mute / unmute the background music. */
+UI.onMusicClick(() => {
+  UI.setMusicMuted(Music.toggle());
 });
 
 UI.onFishingClick(() => {

@@ -132,6 +132,28 @@ button, input, textarea, select, a, label,
 #codex-btn:active { transform: scale(0.96); }
 .codex-icon { font-size: 15px; line-height: 1; }
 
+/* Round music mute toggle, sitting beside the encyclopedia button. */
+#music-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  background: var(--ui-bg);
+  border: 1px solid var(--ui-border);
+  backdrop-filter: blur(8px);
+  border-radius: 50%;
+  color: #eaf6ff;
+  cursor: pointer;
+  box-shadow: 0 6px 22px rgba(0, 0, 0, 0.3);
+  transition: background 0.15s, transform 0.12s;
+}
+#music-btn:hover { background: rgba(20, 44, 70, 0.9); }
+#music-btn:active { transform: scale(0.94); }
+#music-btn.muted { opacity: 0.6; }
+.music-icon { font-size: 15px; line-height: 1; }
+
 /* ---------------- Fish Encyclopedia ---------------- */
 #codex-panel {
   position: absolute;

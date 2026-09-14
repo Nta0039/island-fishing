@@ -40,6 +40,7 @@ export const dom = {
   tradeTabs: Array.from(document.querySelectorAll('.trade-tab')),
   catchCard: $('catch-card'),
   codexBtn: $('codex-btn'),
+  musicBtn: $('music-btn'),
   codexPanel: $('codex-panel'),
   codexGrid: $('codex-grid'),
   codexCount: $('codex-count'),
@@ -146,6 +147,20 @@ export function getChosenColor() {
 /** Flags the name field so a blank submission is obvious. */
 export function markNameInvalid(on) {
   if (dom.nameInput) dom.nameInput.classList.toggle('invalid', !!on);
+}
+
+/* ------------------------------ Music toggle ------------------------------ */
+
+export function onMusicClick(handler) {
+  if (dom.musicBtn) dom.musicBtn.addEventListener('click', handler);
+}
+
+export function setMusicMuted(on) {
+  if (!dom.musicBtn) return;
+  dom.musicBtn.classList.toggle('muted', !!on);
+  dom.musicBtn.title = on ? 'Background music: off' : 'Background music: on';
+  const icon = dom.musicBtn.querySelector('.music-icon');
+  if (icon) icon.textContent = on ? '🔇' : '🔊';
 }
 
 /** Clears the name error as soon as the player starts typing. */
