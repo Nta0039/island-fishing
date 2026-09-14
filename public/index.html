@@ -35,27 +35,48 @@
     <ul id="catchlog-list"></ul>
   </div>
 
-  <!-- Basic control hints, top-left -->
-  <div id="controls-help">
-    <div class="ch-title">Controls</div>
-    <ul class="ch-pc">
-      <li><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> or <kbd>↑</kbd><kbd>←</kbd><kbd>↓</kbd><kbd>→</kbd> move</li>
-      <li><b>Drag</b> the view to look around</li>
-      <li><b>Space</b> hold to reel in</li>
-      <li><b>Click</b> the on-screen buttons to act</li>
-      <li><b>Esc</b> closes a panel or steps back</li>
-    </ul>
-    <ul class="ch-touch">
-      <li><b>Joystick</b> (bottom-left) to move</li>
-      <li><b>Drag</b> the view to look around</li>
-      <li><b>Hold</b> bottom-right to reel in</li>
-      <li><b>Tap</b> the on-screen buttons to act</li>
-    </ul>
+  <!-- Collapsible info cards, top-left -->
+  <div id="info-panel">
+    <section class="info-card" data-card="controls">
+      <button class="info-head" type="button" aria-expanded="true">
+        <span class="info-tri">▾</span>
+        <span class="info-title">Controls</span>
+      </button>
+      <div class="info-body">
+        <ul class="ch-pc">
+          <li><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> or <kbd>↑</kbd><kbd>←</kbd><kbd>↓</kbd><kbd>→</kbd> move</li>
+          <li><b>Drag</b> the view to look around</li>
+          <li><b>Space</b> hold to reel in</li>
+          <li><b>Click</b> the on-screen buttons to act</li>
+          <li><b>Esc</b> closes a panel or steps back</li>
+        </ul>
+        <ul class="ch-touch">
+          <li><b>Joystick</b> (bottom-left) to move</li>
+          <li><b>Drag</b> the view to look around</li>
+          <li><b>Hold</b> bottom-right to reel in</li>
+          <li><b>Tap</b> the on-screen buttons to act</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- Shown on desktop only: scan this to join from a phone -->
+    <section class="info-card" id="qr-card" data-card="qr">
+      <button class="info-head" type="button" aria-expanded="true">
+        <span class="info-tri">▾</span>
+        <span class="info-title">Join on your phone</span>
+      </button>
+      <div class="info-body">
+        <canvas id="qr-canvas" width="168" height="168"></canvas>
+        <div class="qr-url" id="qr-url"></div>
+        <div class="qr-hint">Point your camera at the code</div>
+      </div>
+    </section>
   </div>
 
   <div id="hint"></div>
 
   <button id="fishing-btn" class="hidden">[Fishing]</button>
+  <button id="cancel-btn" class="hidden">[Cancel]</button>
   <button id="collect-btn" class="hidden">[Collect]</button>
   <button id="sit-btn" class="hidden">[Sit]</button>
   <button id="use-btn" class="hidden">[Use]</button>
@@ -144,6 +165,9 @@
 <div id="loading" class="hidden"><div class="spinner"></div><span>Connecting…</span></div>
 
 <script src="/socket.io/socket.io.js"></script>
+<!-- QR encoder, used only for the desktop "join on your phone" card. If it
+     fails to load the card simply stays empty. -->
+<script defer src="https://unpkg.com/qrcode-generator@1.4.4/qrcode.js"></script>
 <script type="module" src="/js/main.js"></script>
 </body>
 </html>

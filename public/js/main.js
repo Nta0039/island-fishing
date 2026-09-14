@@ -29,6 +29,7 @@ import { createAircraft } from './aircraft.js';
 import { createMarineLife } from './marinelife.js';
 import { createReef } from './reef.js';
 import * as Music from './music.js';
+import * as Qr from './qr.js';
 import * as UI from './ui.js';
 
 /* ------------------------------------------------------------------ */
@@ -70,6 +71,33 @@ input.attach(canvas);
 if (input.touch) document.body.classList.add('touch');
 
 UI.initColorPicker(PLAYER_COLORS, 0);
+UI.initInfoCards();
+
+/* ------------------------------------------------------------------ */
+/*  "Join on your phone" QR code                                       */
+/* ------------------------------------------------------------------ */
+
+/* Only useful on a desktop — you cannot scan your own phone screen. */
+if (input.touch) {
+  UI.setQrAvailable(false);
+} else {
+  const shareUrl = window.location.origin + window.location.pathname;
+  UI.setQrUrl(shareUrl);
+  /* The encoder is a deferred CDN script; give it a moment to arrive. */
+  let tries = 0;
+  const drawQr = () => {
+    if (Qr.render(UI.qrCanvas(), shareUrl)) {
+      const local = /^(localhost|127\.0\.0\.1|\[::1\])$/i.test(window.location.hostname);
+      UI.setQrHint(local
+        ? 'Local address — phones cannot reach this. Deploy it, or use your machine\'s IP.'
+        : 'Point your camera at the code');
+      return;
+    }
+    if (tries++ < 40) setTimeout(drawQr, 150);
+    else UI.setQrAvailable(false);
+  };
+  drawQr();
+}
 
 /* ------------------------------------------------------------------ */
 /*  Menu camera & spawn fly-in                                         */
@@ -662,7 +690,10 @@ UI.onTradeAction((a) => {
 });
 
 window.addEventListener('keydown', (e) => {
-  if (e.code === 'Escape' && tradeOpen) closeTrade();
+  if (e.code !== 'Escape') return;
+  if (tradeOpen) { closeTrade(); return; }
+  /* Escape also reels the line back in. */
+  if (local.fishing === 'waiting' || local.fishing === 'hooked') cancelFishing();
 });
 
 /* ------------------------------------------------------------------ */
@@ -712,6 +743,23 @@ UI.onHookClick(() => {
   startMinigame();
 });
 
+UI.onCancelFishingClick(() => {
+  if (local.fishing === 'idle') return;
+  cancelFishing();
+});
+
+function cancelFishing() {
+  if (local.fishing === 'idle') return;
+  if (socket && socket.connected) socket.emit('cancelFishing');
+  local.fishing = 'idle';
+  local.fish = null;
+  fishing.reset();
+  UI.showMinigame(false);
+  UI.showHook(false);
+  UI.showCancelButton(false);
+  updateHint();
+}
+
 UI.onSitClick(() => {
   if (!joined || tradeOpen) return;
   if (lyingChair) getUp();
@@ -727,16 +775,7 @@ UI.onCollectClick(() => {
   socket.emit('collect', { id: near.id });
 });
 
-UI.onCancelClick(() => {
-  if (local.fishing === 'idle') return;
-  socket.emit('cancelFishing');
-  local.fishing = 'idle';
-  local.fish = null;
-  fishing.reset();
-  UI.showMinigame(false);
-  UI.showHook(false);
-  updateHint();
-});
+UI.onCancelClick(cancelFishing);
 
 function startMinigame() {
   local.fishing = 'minigame';
@@ -1077,6 +1116,10 @@ function animate() {
   UI.showCollectButton(idle && !sittingSeat && !lyingChair && !!find && !atMerchant, find ? catchById.get(find.type)?.name : '');
   UI.showFishingButton(idle && !sittingSeat && !lyingChair && nearWater && !atMerchant && !find && !seat && !lounger);
   UI.showTradeButton(idle && !sittingSeat && !lyingChair && atMerchant && !find);
+
+  /* A line in the water can always be reeled back in — whether we are
+     waiting for a bite or already fighting one. */
+  UI.showCancelButton(local.fishing === 'waiting' || local.fishing === 'hooked');
 
   /* Telescope: the prompt replaces every other action while it is up. */
   const telReady = telescopeMode || (idle && !sittingSeat && nearTelescope());

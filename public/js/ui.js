@@ -15,6 +15,11 @@ export const dom = {
   collectBtn: $('collect-btn'),
   sitBtn: $('sit-btn'),
   useBtn: $('use-btn'),
+  cancelBtn: $('cancel-btn'),
+  infoPanel: $('info-panel'),
+  qrCard: $('qr-card'),
+  qrCanvas: $('qr-canvas'),
+  qrUrl: $('qr-url'),
   hookIcon: $('hook-icon'),
   minigame: $('minigame'),
   mgFill: $('mg-fill'),
@@ -266,6 +271,69 @@ export function onHookClick(handler) {
 
 export function onCancelClick(handler) {
   dom.mgCancel.addEventListener('click', handler);
+}
+
+/** Shows the "[Cancel]" prompt while a line is out. */
+export function showCancelButton(on, label) {
+  if (!dom.cancelBtn) return;
+  dom.cancelBtn.classList.toggle('hidden', !on);
+  if (on) dom.cancelBtn.textContent = label ? `[${label}]` : '[Cancel]';
+}
+
+export function onCancelFishingClick(handler) {
+  if (dom.cancelBtn) dom.cancelBtn.addEventListener('click', handler);
+}
+
+/* ---------------------------- Collapsible cards ---------------------------- */
+
+/**
+ * Wires the little triangle headers. Each card folds away on its own, and
+ * the choice is remembered so it survives a reload.
+ */
+export function initInfoCards(storageKey = 'island-fishing.cards') {
+  let saved = {};
+  try { saved = JSON.parse(localStorage.getItem(storageKey) || '{}') || {}; } catch (_) { saved = {}; }
+
+  for (const card of document.querySelectorAll('.info-card')) {
+    const key = card.dataset.card || 'card';
+    const head = card.querySelector('.info-head');
+    if (!head) continue;
+
+    if (saved[key] === 'collapsed') {
+      card.classList.add('collapsed');
+      head.setAttribute('aria-expanded', 'false');
+    }
+
+    head.addEventListener('click', () => {
+      const collapsed = card.classList.toggle('collapsed');
+      head.setAttribute('aria-expanded', String(!collapsed));
+      saved[key] = collapsed ? 'collapsed' : 'open';
+      try { localStorage.setItem(storageKey, JSON.stringify(saved)); } catch (_) { /* ignore */ }
+    });
+  }
+}
+
+export function isCardCollapsed(key) {
+  const card = document.querySelector(`.info-card[data-card="${key}"]`);
+  return !!card && card.classList.contains('collapsed');
+}
+
+/** Hides the QR card entirely when there is nothing useful to show. */
+export function setQrAvailable(on) {
+  if (dom.qrCard) dom.qrCard.classList.toggle('unavailable', !on);
+}
+
+export function setQrUrl(text) {
+  if (dom.qrUrl) dom.qrUrl.textContent = text || '';
+}
+
+export function setQrHint(text) {
+  const hint = dom.qrCard && dom.qrCard.querySelector('.qr-hint');
+  if (hint) hint.textContent = text;
+}
+
+export function qrCanvas() {
+  return dom.qrCanvas;
 }
 
 /* ------------------------------ Minigame ------------------------------ */
