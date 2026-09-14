@@ -20,6 +20,18 @@ html, body {
   color: #eaf6ff;
   user-select: none;
   -webkit-user-select: none;
+  /* No double-tap-to-zoom, and no iOS text inflation on rotate. Panels
+     keep their own scrolling; this only removes the zoom gesture. */
+  touch-action: manipulation;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+/* Every tappable surface refuses the double-tap zoom gesture too, since
+   some browsers only honour it per element. */
+button, input, textarea, select, a, label,
+#hud, #hud > *, #start-screen, #start-screen *, #loading, #toasts {
+  touch-action: manipulation;
 }
 
 #game {
@@ -963,17 +975,6 @@ img.fish-icon {
   transform: translateY(-2px) scale(1.06);
 }
 
-  text-align: center;
-}
-.panel h1 {
-  margin: 0 0 6px;
-  font-size: 34px;
-  letter-spacing: 0.5px;
-  background: linear-gradient(180deg, #ffffff, #8fd4ff);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-}
 .panel .sub { margin: 0 0 22px; font-size: 13px; opacity: 0.65; }
 
 #name-input {

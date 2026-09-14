@@ -179,5 +179,36 @@ export class Input {
     reel.addEventListener('pointerup', reelEnd);
     reel.addEventListener('pointercancel', reelEnd);
     reel.addEventListener('pointerleave', reelEnd);
+
+    /* ---------------- Mobile zoom lock ----------------
+       The viewport meta covers Android, but iOS Safari ignores
+       user-scalable=no entirely, so pinch and double-tap zoom have to be
+       refused in script. Scrolling inside the trade and codex panels is
+       left alone. */
+    const swallow = (e) => { if (e.cancelable) e.preventDefault(); };
+
+    /* iOS fires these for a pinch. */
+    for (const ev of ['gesturestart', 'gesturechange', 'gestureend']) {
+      document.addEventListener(ev, swallow, { passive: false });
+    }
+    /* The synthetic double-click that a fast double tap produces. */
+    document.addEventListener('dblclick', swallow, { passive: false });
+
+    /* Two fingers down anywhere is a pinch — never let it through. */
+    document.addEventListener('touchmove', (e) => {
+      if (e.touches.length > 1 && e.cancelable) e.preventDefault();
+    }, { passive: false });
+
+    /* And swallow the second tap of a double tap, unless it landed on a
+       real control (those already opt out via touch-action). */
+    const isControl = (el) =>
+      !!(el && el.closest && el.closest('button, input, textarea, select, a, label'));
+    let lastTapAt = 0;
+    document.addEventListener('touchend', (e) => {
+      const now = Date.now();
+      const isSecondTap = now - lastTapAt <= 320;
+      lastTapAt = now;
+      if (isSecondTap && !isControl(e.target) && e.cancelable) e.preventDefault();
+    }, { passive: false });
   }
 }
