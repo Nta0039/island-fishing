@@ -161,14 +161,11 @@ let telescopePan = 0;
 let telescopeTilt = 0;
 const TEL_PAN_LIMIT = (75 * Math.PI) / 180;
 const TEL_TILT_LIMIT = (30 * Math.PI) / 180;
-const TEL_PAN_SPEED = 1.5;
-const TEL_TILT_SPEED = 1.0;
 const TEL_RANGE = 9.0;
 const _telEye = new THREE.Vector3();
 const _telAim = new THREE.Vector3();
 const _up = new THREE.Vector3(0, 1, 0);
 const _telRight = new THREE.Vector3();
-const _panKeys = { left: false, right: false, up: false, down: false };
 
 function telescopeGroup() {
   return (world.lighthouse && world.lighthouse.userData.telescope) || null;
@@ -188,16 +185,20 @@ function enterTelescope() {
   telescopeMode = true;
   telescopePan = 0;
   telescopeTilt = 0;
-  UI.setHint('Telescope — drag or WASD / arrows to look around, [Exit] to step back');
+  /* Capture the mouse so it drives the view, exactly like normal
+     mouse-look. This click is the gesture that allows the capture. */
+  if (!input.touch && canvas.requestPointerLock) {
+    const req = canvas.requestPointerLock();
+    if (req && typeof req.catch === 'function') req.catch(() => {});
+  }
+  UI.setHint(input.touch
+    ? 'Telescope — swipe to look around, tap to step back'
+    : 'Telescope — move the mouse to look around, Esc to step back');
 }
 
 function exitTelescope() {
   if (!telescopeMode) return;
   telescopeMode = false;
-  _panKeys.left = false;
-  _panKeys.right = false;
-  _panKeys.up = false;
-  _panKeys.down = false;
   camera.fov = 60;
   camera.updateProjectionMatrix();
   UI.setHint('');
@@ -223,55 +224,49 @@ UI.onUseClick(() => {
   else if (nearTelescope()) enterTelescope();
 });
 
-/* Telescope look: drag across the screen, or hold WASD / the arrows. */
+/* Telescope look: the mouse drives it directly, exactly like mouse-look
+   in the rest of the game. Touch devices swipe instead, since they have
+   no pointer to move. */
 let _panLastX = null;
 let _panLastY = null;
+
+/** Shared by both the mouse and the touch swipe. */
+function telescopeLookBy(dx, dy) {
+  telescopePan = Math.max(-TEL_PAN_LIMIT, Math.min(TEL_PAN_LIMIT,
+    telescopePan + dx * 0.0016));
+  telescopeTilt = Math.max(-TEL_TILT_LIMIT, Math.min(TEL_TILT_LIMIT,
+    telescopeTilt - dy * 0.0016));
+}
+
+/* Mouse-look. movementX/Y keeps working past the window edge, so the view
+   turns as far as the limits allow without ever running out of desk. */
+window.addEventListener('mousemove', (e) => {
+  if (!telescopeMode) return;
+  telescopeLookBy(e.movementX || 0, e.movementY || 0);
+});
+
+/* Swipe, for touch screens. */
 canvas.addEventListener('pointerdown', (e) => {
-  if (telescopeMode) { _panLastX = e.clientX; _panLastY = e.clientY; }
+  if (telescopeMode && e.pointerType !== 'mouse') {
+    _panLastX = e.clientX;
+    _panLastY = e.clientY;
+  }
 });
 canvas.addEventListener('pointermove', (e) => {
   if (!telescopeMode || _panLastX === null) return;
-  telescopePan = Math.max(-TEL_PAN_LIMIT, Math.min(TEL_PAN_LIMIT,
-    telescopePan + (e.clientX - _panLastX) * 0.0045));
-  telescopeTilt = Math.max(-TEL_TILT_LIMIT, Math.min(TEL_TILT_LIMIT,
-    telescopeTilt - (e.clientY - _panLastY) * 0.0035));
+  telescopeLookBy(e.clientX - _panLastX, e.clientY - _panLastY);
   _panLastX = e.clientX;
   _panLastY = e.clientY;
 });
 canvas.addEventListener('pointerup', () => { _panLastX = null; _panLastY = null; });
 canvas.addEventListener('pointercancel', () => { _panLastX = null; _panLastY = null; });
 
-const LOOK_LEFT = ['a', 'A', 'ArrowLeft'];
-const LOOK_RIGHT = ['d', 'D', 'ArrowRight'];
-const LOOK_UP = ['w', 'W', 'ArrowUp'];
-const LOOK_DOWN = ['s', 'S', 'ArrowDown'];
 window.addEventListener('keydown', (e) => {
   if (e.key === 'Escape') exitTelescope();
-  if (!telescopeMode) return;
-  if (LOOK_LEFT.includes(e.key)) _panKeys.left = true;
-  if (LOOK_RIGHT.includes(e.key)) _panKeys.right = true;
-  if (LOOK_UP.includes(e.key)) _panKeys.up = true;
-  if (LOOK_DOWN.includes(e.key)) _panKeys.down = true;
-});
-window.addEventListener('keyup', (e) => {
-  if (LOOK_LEFT.includes(e.key)) _panKeys.left = false;
-  if (LOOK_RIGHT.includes(e.key)) _panKeys.right = false;
-  if (LOOK_UP.includes(e.key)) _panKeys.up = false;
-  if (LOOK_DOWN.includes(e.key)) _panKeys.down = false;
 });
 
-/** Advances pan and tilt, and returns the aim direction, already aimed. */
-function telescopeAim(tel, dt) {
-  const h = _panKeys.right ? 1 : (_panKeys.left ? -1 : 0);
-  if (h) {
-    telescopePan = Math.max(-TEL_PAN_LIMIT, Math.min(TEL_PAN_LIMIT,
-      telescopePan + h * TEL_PAN_SPEED * dt));
-  }
-  const v = _panKeys.up ? 1 : (_panKeys.down ? -1 : 0);
-  if (v) {
-    telescopeTilt = Math.max(-TEL_TILT_LIMIT, Math.min(TEL_TILT_LIMIT,
-      telescopeTilt + v * TEL_TILT_SPEED * dt));
-  }
+/** Returns the aim direction for the current pan and tilt. */
+function telescopeAim(tel) {
   _telAim.copy(tel.userData.aim).applyAxisAngle(_up, telescopePan);
   /* Tilt about the axis square to the view, so the horizon stays level.
      Positive tilt raises the aim. */
@@ -329,6 +324,7 @@ let tradeTab = 'sell';
 const _camTarget = new THREE.Vector3();
 const _desired = new THREE.Vector3();
 const _head = new THREE.Vector3();
+const _promptAnchor = new THREE.Vector3();
 const _fwd = new THREE.Vector3();
 const _right = new THREE.Vector3();
 const _dir = new THREE.Vector3();
@@ -422,6 +418,8 @@ function connect(name, color) {
   socket.on('playerCosmetics', onPlayerCosmetics);
   socket.on('fishingState', onFishingState);
   socket.on('fishCaught', onFishCaught);
+  socket.on('struggleStart', onStruggleStart);
+  socket.on('fishEscaped', onFishEscaped);
   socket.on('playerData', onPlayerData);
   socket.on('tradeResult', onTradeResult);
   socket.on('collectibleAdded', (item) => beachItems.add(item));
@@ -568,11 +566,20 @@ function onFishingState(msg) {
     local.fishing = msg.state;
     if (msg.state === 'hooked') {
       local.fish = msg.fish;
+      /* No more "!" to click — the bite drops straight into the reeling
+         game, and the server gives you five seconds to start working it. */
+      UI.showHook(false);
+      if (socket && socket.connected) socket.emit('startMinigame');
+      startMinigame();
+    } else if (msg.state === 'struggle') {
+      local.fish = msg.fish;
     } else if (msg.state === 'idle') {
       local.fish = null;
+      local.struggle = null;
       fishing.reset();
       UI.showMinigame(false);
       UI.showHook(false);
+      UI.showStruggle(false);
     } else if (msg.state === 'minigame') {
       UI.showHook(false);
     }
@@ -587,6 +594,59 @@ function onFishingState(msg) {
   }
 
   updateHint();
+}
+
+/* ---------------------- Seagull tug-of-war ---------------------- */
+
+function onStruggleStart(d) {
+  local.struggle = {
+    fish: d && d.fish,
+    need: (d && d.need) || 3,
+    window: (d && d.window) || 6,
+    got: 0,
+    t: 0,
+    lastSent: 0,
+  };
+  UI.showStruggle(true, local.struggle);
+  UI.setStruggleProgress(0);
+  updateHint();
+}
+
+function onFishEscaped(d) {
+  if (!d || d.id !== myId) return;
+  UI.showStruggle(false);
+  local.struggle = null;
+  if (d.reason === 'seagull') {
+    UI.notify(`A seagull made off with your ${d.fish ? d.fish.name : 'fish'}!`);
+  } else {
+    UI.notify('The fish got away — you were too slow.');
+  }
+  updateHint();
+}
+
+/** Drives the tug-of-war bar and reports the held time to the server. */
+function updateStruggle(dt) {
+  const s = local.struggle;
+  if (!s) return;
+  s.t += dt;
+
+  if (input.hold) {
+    s.got += dt;
+    s.lastSent += dt;
+    /* Report in small batches so the server can credit the hold even if
+       the struggle ends before the next frame. */
+    if (s.lastSent >= 0.1) {
+      if (socket && socket.connected) socket.emit('struggleInput', { dt: s.lastSent });
+      s.lastSent = 0;
+    }
+  }
+
+  UI.setStruggleProgress(Math.min(1, s.got / s.need), s.window - s.t);
+
+  if (s.t >= s.window + 0.5) {
+    UI.showStruggle(false);
+    local.struggle = null;
+  }
 }
 
 function onFishCaught(record) {
@@ -710,23 +770,18 @@ window.addEventListener('keydown', (e) => {
 });
 
 /* PC shortcuts. While the mouse is captured by pointer lock the on-screen
-   buttons cannot be clicked, so every action needs a key. */
-function clickIfVisible(btn) {
-  if (btn && !btn.classList.contains('hidden')) { btn.click(); return true; }
-  return false;
-}
-
+   prompt cannot be clicked, so every action needs a key. */
 window.addEventListener('keydown', (e) => {
-  if (!joined || tradeOpen || UI.isCodexOpen() || telescopeMode) return;
+  if (!joined || tradeOpen || UI.isCodexOpen()) return;
   if (e.code === 'KeyF') {
-    if (local.fishing === 'idle') clickIfVisible(UI.dom.fishingBtn);
-    else cancelFishing();
+    if (local.fishing === 'waiting' || local.fishing === 'hooked') cancelFishing();
+    else if (!currentAction && local.fishing === 'idle') castLine();
+    else if (currentAction && currentAction.label === 'Fish') currentAction.run();
   } else if (e.code === 'KeyE') {
-    if (local.fishing !== 'idle' || sittingSeat || lyingChair) return;
-    clickIfVisible(UI.dom.collectBtn)
-      || clickIfVisible(UI.dom.useBtn)
-      || clickIfVisible(UI.dom.sitBtn)
-      || clickIfVisible(UI.dom.tradeBtn);
+    if (!currentAction) return;
+    if (['Pick up', 'Use telescope', 'Sit', 'Sunbathe', 'Trade'].includes(currentAction.label)) {
+      currentAction.run();
+    }
   }
 });
 
@@ -762,51 +817,72 @@ UI.onMusicClick(() => {
   UI.setMusicMuted(Music.toggle());
 });
 
-UI.onFishingClick(() => {
+/* ---------- The context action, shown beside the player ---------- */
+
+function castLine() {
   if (local.fishing !== 'idle' || !joined || tradeOpen) return;
   if (!socket || !socket.connected) return;
   local.fishing = 'waiting';
   socket.emit('castLine');
   fishing.cast(local.group);
   updateHint();
-});
-
-UI.onHookClick(() => {
-  if (local.fishing !== 'hooked') return;
-  socket.emit('startMinigame');
-  startMinigame();
-});
-
-UI.onCancelFishingClick(() => {
-  if (local.fishing === 'idle') return;
-  cancelFishing();
-});
+}
 
 function cancelFishing() {
   if (local.fishing === 'idle') return;
   if (socket && socket.connected) socket.emit('cancelFishing');
   local.fishing = 'idle';
   local.fish = null;
+  local.struggle = null;
   fishing.reset();
   UI.showMinigame(false);
   UI.showHook(false);
-  UI.showCancelButton(false);
+  UI.showStruggle(false);
   updateHint();
 }
 
-UI.onSitClick(() => {
+function pickUp() {
+  if (!joined || tradeOpen || local.fishing !== 'idle') return;
+  const near = beachItems.nearest(local.x, local.z, COLLECT_RANGE);
+  if (!near || !socket || !socket.connected) return;
+  socket.emit('collect', { id: near.id });
+}
+
+function sitOrLie() {
   if (!joined || tradeOpen) return;
   if (lyingChair) getUp();
   else if (sittingSeat) standUp();
   else if (nearestChair()) lieDown();
   else sitDown();
-});
+}
 
-UI.onCollectClick(() => {
-  if (!joined || tradeOpen || local.fishing !== 'idle') return;
-  const near = beachItems.nearest(local.x, local.z, COLLECT_RANGE);
-  if (!near || !socket || !socket.connected) return;
-  socket.emit('collect', { id: near.id });
+/**
+ * Decides which single action the player can take right now, and what its
+ * prompt should say. Returns null when there is nothing to offer.
+ */
+function pickAction(ctx) {
+  if (!joined || tradeOpen || UI.isCodexOpen()) return null;
+  if (telescopeMode) return { label: 'Exit telescope', alt: true, run: exitTelescope };
+  if (local.struggle) return null;
+  if (local.fishing === 'waiting' || local.fishing === 'hooked') {
+    return { label: 'Reel in', alt: true, run: cancelFishing };
+  }
+  if (local.fishing === 'minigame') return null;
+  if (lyingChair) return { label: 'Get up', alt: true, run: getUp };
+  if (sittingSeat) return { label: 'Stand', alt: true, run: standUp };
+  if (!ctx.idle) return null;
+  if (nearTelescope()) return { label: 'Use telescope', run: enterTelescope };
+  if (ctx.find) return { label: 'Pick up', run: pickUp };
+  if (ctx.lounger) return { label: 'Sunbathe', run: lieDown };
+  if (ctx.seat) return { label: 'Sit', run: sitDown };
+  if (ctx.atMerchant) return { label: 'Trade', run: openTrade };
+  if (ctx.nearWater) return { label: 'Fish', run: castLine };
+  return null;
+}
+
+let currentAction = null;
+UI.onActionPromptClick(() => {
+  if (currentAction) currentAction.run();
 });
 
 UI.onCancelClick(cancelFishing);
@@ -822,11 +898,13 @@ function startMinigame() {
 function updateHint() {
   if (!joined) return;
   if (telescopeMode) {
-    UI.setHint('Telescope — drag or WASD / arrows to look around, [Exit] to step back');
+    UI.setHint(input.touch
+      ? 'Telescope — swipe to look around, tap to step back'
+      : 'Telescope — move the mouse to look around, Esc to step back');
   } else if (local.fishing === 'waiting') {
     UI.setHint('Line cast — waiting for a bite…');
   } else if (local.fishing === 'hooked') {
-    UI.setHint('A bite! Tap the “!” above your head');
+    UI.setHint('A bite! Work the line — Space or the reel button');
   } else if (local.fishing === 'minigame') {
     UI.setHint('');
   } else if (lyingChair) {
@@ -1205,6 +1283,9 @@ function animate() {
     }
   }
 
+  /* ---------- Seagull tug-of-war ---------- */
+  updateStruggle(dt);
+
   /* ---------- Overlays ---------- */
   const nearWater = atWater();
   const atMerchant = nearMerchant();
@@ -1215,42 +1296,26 @@ function animate() {
   const seat = idle && !sittingSeat && !lyingChair && !find ? nearestSeat() : null;
   const lounger = idle && !sittingSeat && !lyingChair && !find && !seat ? nearestChair() : null;
 
-  /* One button covers both resting spots: bench, or lounger. */
-  if (lyingChair) {
-    UI.showSitButton(true, 'Get up');
-  } else if (sittingSeat) {
-    UI.showSitButton(true, 'Stand');
-  } else if (lounger && !atMerchant) {
-    UI.showSitButton(true, 'Sunbathe');
+  /* ---------- The floating action prompt ----------
+     One context action at a time, projected from a point beside the
+     player's shoulder so it reads as part of the world. */
+  const action = pickAction({ idle, seat, lounger, find, atMerchant, nearWater });
+  if (action && local.group) {
+    _promptAnchor.set(
+      local.x + Math.cos(local.rotation) * 1.25,
+      local.group.position.y + 1.5,
+      local.z - Math.sin(local.rotation) * 1.25
+    );
+    const ps = UI.projectToScreen(_promptAnchor, camera);
+    UI.showActionPrompt(ps.visible, action.label, action.alt);
+    UI.placeActionPrompt(ps);
+    currentAction = action;
   } else {
-    UI.showSitButton(!!(idle && seat && !atMerchant), 'Sit');
-  }
-  UI.showCollectButton(idle && !sittingSeat && !lyingChair && !!find && !atMerchant, find ? catchById.get(find.type)?.name : '');
-  UI.showFishingButton(idle && !sittingSeat && !lyingChair && nearWater && !atMerchant && !find && !seat && !lounger);
-  UI.showTradeButton(idle && !sittingSeat && !lyingChair && atMerchant && !find);
-
-  /* A line in the water can always be reeled back in — whether we are
-     waiting for a bite or already fighting one. */
-  UI.showCancelButton(local.fishing === 'waiting' || local.fishing === 'hooked');
-
-  /* Telescope: the prompt replaces every other action while it is up. */
-  const telReady = telescopeMode || (idle && !sittingSeat && nearTelescope());
-  UI.showUseButton(telReady, telescopeMode ? 'Exit' : 'Use');
-  if (telReady) {
-    UI.showSitButton(false);
-    UI.showCollectButton(false);
-    UI.showFishingButton(false);
-    UI.showTradeButton(false);
+    UI.showActionPrompt(false);
+    currentAction = null;
   }
 
-  if (joined && local.fishing === 'hooked' && local.group) {
-    _head.set(local.x, local.group.position.y + 3.15, local.z);
-    const s = UI.projectToScreen(_head, camera);
-    UI.placeHook(s);
-    UI.showHook(s.visible);
-  } else {
-    UI.showHook(false);
-  }
+  UI.showHook(false);
 
   /* ---------- Network ---------- */
   if (joined) {
@@ -1304,7 +1369,7 @@ function animate() {
     const tel = world.lighthouse.userData.telescope;
     _telEye.copy(tel.userData.eyeLocal);
     tel.localToWorld(_telEye);
-    const aim = telescopeAim(tel, dt);
+    const aim = telescopeAim(tel);
     camera.position.lerp(_telEye, 1 - Math.pow(0.0008, dt));
     camera.lookAt(
       camera.position.x + aim.x,

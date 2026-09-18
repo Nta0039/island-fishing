@@ -11,11 +11,16 @@ export const dom = {
   onlineMax: $('online-max'),
   catchlogList: $('catchlog-list'),
   hint: $('hint'),
-  fishingBtn: $('fishing-btn'),
-  collectBtn: $('collect-btn'),
-  sitBtn: $('sit-btn'),
-  useBtn: $('use-btn'),
-  cancelBtn: $('cancel-btn'),
+  fishingBtn: null,
+  collectBtn: null,
+  sitBtn: null,
+  useBtn: null,
+  cancelBtn: null,
+  actionPrompt: $('action-prompt'),
+  struggle: $('struggle'),
+  sgFill: $('sg-fill'),
+  sgLabel: $('sg-label'),
+  sgTime: $('sg-time'),
   infoPanel: $('info-panel'),
   qrCard: $('qr-card'),
   qrCanvas: $('qr-canvas'),
@@ -206,42 +211,35 @@ export function setHint(text) {
   dom.hint.classList.toggle('show', !!text);
 }
 
-export function showFishingButton(on) {
-  dom.fishingBtn.classList.toggle('hidden', !on);
+/* ------------------------- Floating action prompt ------------------------- */
+
+/**
+ * One context action, drawn in the world beside the player rather than in
+ * a strip along the bottom of the screen. `placeActionPrompt` is called
+ * every frame with the projected anchor so it tracks the character.
+ */
+export function showActionPrompt(on, label, alt) {
+  const el = dom.actionPrompt;
+  if (!el) return;
+  el.classList.toggle('hidden', !on);
+  el.classList.toggle('alt', !!alt);
+  if (on && label !== undefined) el.textContent = label;
+}
+
+export function placeActionPrompt(screen) {
+  const el = dom.actionPrompt;
+  if (!el || !screen) return;
+  el.style.left = `${screen.x}px`;
+  el.style.top = `${screen.y}px`;
+  el.style.visibility = screen.visible ? 'visible' : 'hidden';
+}
+
+export function onActionPromptClick(handler) {
+  if (dom.actionPrompt) dom.actionPrompt.addEventListener('click', handler);
 }
 
 export function showHook(on) {
-  dom.hookIcon.classList.toggle('hidden', !on);
-}
-
-export function showCollectButton(on, label) {
-  dom.collectBtn.classList.toggle('hidden', !on);
-  if (on && label) dom.collectBtn.textContent = `[Collect ${label}]`;
-}
-
-export function onCollectClick(handler) {
-  dom.collectBtn.addEventListener('click', handler);
-}
-
-export function showSitButton(on, label) {
-  dom.sitBtn.classList.toggle('hidden', !on);
-  if (on) dom.sitBtn.textContent = label ? `[${label}]` : '[Sit]';
-}
-
-export function onSitClick(handler) {
-  dom.sitBtn.addEventListener('click', handler);
-}
-
-/* ---------------------------- "[Use]" prompt ---------------------------- */
-
-export function showUseButton(on, label) {
-  dom.useBtn.classList.toggle('hidden', !on);
-  if (on) dom.useBtn.textContent = label ? `[${label}]` : '[Use]';
-  dom.useBtn.classList.toggle('exit', !!(on && label === 'Exit'));
-}
-
-export function onUseClick(handler) {
-  dom.useBtn.addEventListener('click', handler);
+  if (dom.hookIcon) dom.hookIcon.classList.toggle('hidden', !on);
 }
 
 /** Small floating "+item" pickup popup anchored to a screen position. */
@@ -256,32 +254,33 @@ export function pickupPopup(screen, text) {
 }
 
 export function placeHook(screen) {
-  if (!screen) return;
+  if (!screen || !dom.hookIcon) return;
   dom.hookIcon.style.left = `${screen.x}px`;
   dom.hookIcon.style.top = `${screen.y}px`;
-}
-
-export function onFishingClick(handler) {
-  dom.fishingBtn.addEventListener('click', handler);
-}
-
-export function onHookClick(handler) {
-  dom.hookIcon.addEventListener('click', handler);
 }
 
 export function onCancelClick(handler) {
   dom.mgCancel.addEventListener('click', handler);
 }
 
-/** Shows the "[Cancel]" prompt while a line is out. */
-export function showCancelButton(on, label) {
-  if (!dom.cancelBtn) return;
-  dom.cancelBtn.classList.toggle('hidden', !on);
-  if (on) dom.cancelBtn.textContent = label ? `[${label}]` : '[Cancel]';
+/* --------------------------- Seagull struggle --------------------------- */
+
+export function showStruggle(on, s) {
+  if (!dom.struggle) return;
+  dom.struggle.classList.toggle('hidden', !on);
+  if (on && dom.sgLabel) {
+    const touch = document.body.classList.contains('touch');
+    dom.sgLabel.textContent = touch ? 'Mash the button to keep it!' : 'Mash Space to keep it!';
+  }
+  if (on && dom.sgTime && s) dom.sgTime.textContent = `${s.window}s`;
 }
 
-export function onCancelFishingClick(handler) {
-  if (dom.cancelBtn) dom.cancelBtn.addEventListener('click', handler);
+/** `progress` is how much of the struggle is won, `secondsLeft` the time. */
+export function setStruggleProgress(progress, secondsLeft) {
+  if (dom.sgFill) dom.sgFill.style.width = `${Math.round(Math.max(0, Math.min(1, progress)) * 100)}%`;
+  if (dom.sgTime && secondsLeft !== undefined) {
+    dom.sgTime.textContent = `${Math.max(0, secondsLeft).toFixed(1)}s`;
+  }
 }
 
 /* ---------------------------- Collapsible cards ---------------------------- */
@@ -366,20 +365,12 @@ let tradeState = null;
 let tradeActionHandler = null;
 let tradeMsgTimer = null;
 
-export function onTradeClick(handler) {
-  dom.tradeBtn.addEventListener('click', handler);
-}
-
 export function onTradeClose(handler) {
   dom.tradeClose.addEventListener('click', handler);
 }
 
 export function onTradeAction(handler) {
   tradeActionHandler = handler;
-}
-
-export function showTradeButton(on) {
-  dom.tradeBtn.classList.toggle('hidden', !on);
 }
 
 export function showTradePanel(on) {

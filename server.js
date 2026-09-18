@@ -89,6 +89,17 @@ const FISH_TABLE = [
 /* Cumulative time the reeling indicator must stay inside the red zone. */
 const RARITY_TIME = { common: 5, medium: 5, high: 10, rare: 15 };
 
+/* Fishing timings. A bite gives you BITE_WINDOW seconds to start working
+   the line before the fish slips off. */
+const BITE_WINDOW = 5;
+
+/* After a catch there is a STRUGGLE_CHANCE of a gull trying to steal it.
+   Win by keeping the input going for STRUGGLE_NEED seconds inside
+   STRUGGLE_WINDOW, otherwise the bird gets the fish. */
+const STRUGGLE_CHANCE = 0.25;
+const STRUGGLE_WINDOW = 6;
+const STRUGGLE_NEED = 3.0;
+
 /* Coins earned per fish sold to the merchant. */
 const RARITY_VALUE = { common: 6, medium: 15, high: 40, rare: 120 };
 
@@ -571,6 +582,7 @@ function resetFishing(p, broadcast) {
   clearTimer(p);
   p.fishing = 'idle';
   p.fish = null;
+  p.struggle = null;
   if (broadcast) io.emit('fishingState', { id: p.id, state: 'idle' });
 }
 
@@ -640,6 +652,7 @@ io.on('connection', (socket) => {
       moving: false,
       fishing: 'idle',
       fish: null,
+      struggle: null,
       timer: null,
       inventory: resume ? { ...saved.inventory } : {},
       coins: resume ? saved.coins : 0,
@@ -717,11 +730,14 @@ io.on('connection', (socket) => {
         fish: pl.fish,
       });
 
+      /* Nothing happens for five seconds and the fish is off the hook. */
       clearTimer(pl);
       pl.timer = setTimeout(() => {
         const q = players.get(socket.id);
-        if (q && q.fishing === 'hooked') resetFishing(q, true);
-      }, 12000);
+        if (!q || q.fishing !== 'hooked') return;
+        io.emit('fishEscaped', { id: q.id, name: q.name, fish: q.fish, reason: 'timeout' });
+        resetFishing(q, true);
+      }, BITE_WINDOW * 1000);
     }, rand(5000, 10000));
   });
 
@@ -733,11 +749,8 @@ io.on('connection', (socket) => {
     io.emit('fishingState', { id: p.id, state: 'minigame' });
   });
 
-  socket.on('catchSuccess', () => {
-    const p = players.get(socket.id);
-    if (!p || !p.fish) return;
-    const fish = p.fish;
-
+  /** Puts a landed fish in the player's cooler and tells everyone. */
+  function awardCatch(sock, p, fish) {
     p.inventory[fish.id] = (p.inventory[fish.id] || 0) + 1;
     /* First time this species is landed it unlocks its encyclopedia entry. */
     const isNew = !p.discovered[fish.id];
@@ -746,8 +759,60 @@ io.on('connection', (socket) => {
     if (fish.rarity === RARE_TIER) p.rareCatches = (p.rareCatches || 0) + 1;
 
     io.emit('fishCaught', { id: p.id, name: p.name, fish, time: Date.now(), isNew });
-    socket.emit('playerData', privatePlayer(p));
+    if (sock) sock.emit('playerData', privatePlayer(p));
     resetFishing(p, true);
+  }
+
+  /** Ends a gull struggle, handing over or losing the fish. */
+  function resolveStruggle(id, won) {
+    const p = players.get(id);
+    if (!p || p.fishing !== 'struggle' || !p.struggle) return;
+    const fish = p.struggle.fish;
+    p.struggle = null;
+    clearTimer(p);
+
+    if (won) {
+      const sock = io.sockets.sockets.get(id);
+      awardCatch(sock, p, fish);
+    } else {
+      io.emit('fishEscaped', { id: p.id, name: p.name, fish, reason: 'seagull' });
+      resetFishing(p, true);
+    }
+  }
+
+  socket.on('catchSuccess', () => {
+    const p = players.get(socket.id);
+    if (!p || !p.fish) return;
+    const fish = p.fish;
+
+    /* Every so often a gull dives in and tries to make off with it. */
+    if (Math.random() < STRUGGLE_CHANCE) {
+      p.fishing = 'struggle';
+      p.struggle = { fish, got: 0 };
+      io.emit('fishingState', {
+        id: p.id,
+        state: 'struggle',
+        name: p.name,
+        fish,
+      });
+      socket.emit('struggleStart', { fish, need: STRUGGLE_NEED, window: STRUGGLE_WINDOW });
+
+      clearTimer(p);
+      p.timer = setTimeout(() => resolveStruggle(socket.id, false), STRUGGLE_WINDOW * 1000);
+      return;
+    }
+
+    awardCatch(socket, p, fish);
+  });
+
+  /* The client reports how long the input has been held; the server adds
+     it up so a slow connection cannot lose the struggle. */
+  socket.on('struggleInput', (d) => {
+    const p = players.get(socket.id);
+    if (!p || p.fishing !== 'struggle' || !p.struggle) return;
+    const dt = Math.min(0.3, Math.max(0, Number(d && d.dt) || 0));
+    p.struggle.got += dt;
+    if (p.struggle.got >= STRUGGLE_NEED) resolveStruggle(socket.id, true);
   });
 
   socket.on('cancelFishing', () => {

@@ -362,6 +362,37 @@ body.touch .ch-touch { display: block; }
   #info-panel { display: none; }
 }
 
+/* ---------------- Floating action prompt ---------------- */
+/* Anchored in world space beside the player, repositioned every frame. */
+#action-prompt {
+  position: absolute;
+  left: 0;
+  top: 0;
+  transform: translate(-50%, -50%);
+  padding: 9px 18px;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 800;
+  letter-spacing: 0.3px;
+  white-space: nowrap;
+  color: #062033;
+  background: linear-gradient(180deg, #ffe680, #ffc21f);
+  border: none;
+  border-radius: 999px;
+  cursor: pointer;
+  box-shadow: 0 8px 22px rgba(255, 190, 20, 0.42), inset 0 -3px 0 rgba(0, 0, 0, 0.16);
+  animation: promptIn 0.2s ease;
+  z-index: 6;
+  transition: left 0.05s linear, top 0.05s linear;
+}
+#action-prompt:active { transform: translate(-50%, -50%) scale(0.94); }
+#action-prompt.alt {
+  color: #ffffff;
+  background: linear-gradient(180deg, #e05a47, #b8402f);
+  box-shadow: 0 8px 22px rgba(200, 70, 50, 0.45), inset 0 -3px 0 rgba(0, 0, 0, 0.16);
+}
+@keyframes promptIn { from { opacity: 0; transform: translate(-50%, -50%) scale(0.7); } to { opacity: 1; transform: translate(-50%, -50%) scale(1); } }
+
 /* ---------------- Catch feed ---------------- */
 #catchlog {
   position: absolute;
@@ -955,6 +986,59 @@ img.fish-icon {
 #catch-card.rarity-medium .cc-rarity { color: var(--rarity-medium); }
 #catch-card.rarity-high   .cc-rarity { color: var(--rarity-high); }
 #catch-card.rarity-rare   .cc-rarity { color: var(--rarity-rare); }
+
+/* ---------------- Seagull tug-of-war ---------------- */
+#struggle {
+  position: absolute;
+  top: 46%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: min(88vw, 380px);
+  padding: 16px 18px 14px;
+  border-radius: 18px;
+  background: rgba(8, 22, 38, 0.86);
+  border: 1px solid var(--ui-border);
+  border-top: 4px solid #ffb703;
+  backdrop-filter: blur(12px);
+  box-shadow: 0 22px 56px rgba(0, 0, 0, 0.55);
+  text-align: center;
+  z-index: 35;
+  animation: pop 0.24s ease;
+  pointer-events: none;
+}
+#struggle .sg-head {
+  font-size: 14px;
+  font-weight: 800;
+  margin-bottom: 10px;
+}
+#struggle .sg-bird {
+  display: inline-block;
+  font-size: 18px;
+  animation: sgFlap 0.6s ease-in-out infinite alternate;
+}
+@keyframes sgFlap { from { transform: translateY(0) rotate(-6deg); } to { transform: translateY(-3px) rotate(6deg); } }
+#sg-bar {
+  height: 16px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.12);
+  overflow: hidden;
+}
+#sg-fill {
+  height: 100%;
+  width: 0%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #ffd166, #ff9f1c);
+  transition: width 0.08s linear;
+}
+.sg-foot {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 8px;
+  font-size: 11.5px;
+  opacity: 0.85;
+}
+#sg-time { font-variant-numeric: tabular-nums; opacity: 0.75; }
 
 /* ---------------- Toasts ---------------- */
 #toasts {
