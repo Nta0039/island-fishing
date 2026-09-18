@@ -21,9 +21,19 @@ export class Input {
     this.dragging = false;
     this.dragId = null;
 
+    /* True while the browser has captured the mouse (PC mouse-look). */
+    this.pointerLocked = false;
+
     this.touch =
       (window.matchMedia && window.matchMedia('(pointer: coarse)').matches) ||
       'ontouchstart' in window;
+  }
+
+  /** Hands the mouse back to the page, e.g. when a panel opens. */
+  releasePointerLock() {
+    if (document.pointerLockElement && document.exitPointerLock) {
+      document.exitPointerLock();
+    }
   }
 
   get moveInput() {
@@ -115,6 +125,31 @@ export class Input {
     };
     canvas.addEventListener('pointerup', endDrag);
     canvas.addEventListener('pointercancel', endDrag);
+
+    /* ---------------- PC mouse-look via pointer lock ----------------
+       On desktop the mouse drives the camera directly: click once to
+       capture the pointer, then move the mouse freely with no button held.
+       Escape (or opening a panel) gives the cursor back. Touch devices
+       keep the drag-to-look behaviour below. */
+    if (!this.touch) {
+      canvas.addEventListener('click', () => {
+        if (this.pointerLocked) return;
+        if (document.pointerLockElement === canvas) return;
+        const req = canvas.requestPointerLock && canvas.requestPointerLock();
+        /* Chrome returns a promise and can reject if we ask too soon. */
+        if (req && typeof req.catch === 'function') req.catch(() => {});
+      });
+
+      document.addEventListener('pointerlockchange', () => {
+        this.pointerLocked = document.pointerLockElement === canvas;
+      });
+
+      document.addEventListener('mousemove', (e) => {
+        if (!this.pointerLocked) return;
+        this.yaw -= e.movementX * 0.0022;
+        this.pitch = clamp(this.pitch + e.movementY * 0.0018, 0.06, 1.15);
+      });
+    }
 
     /* ---------------- Virtual joystick ---------------- */
     const zone = dom.joystickZone;

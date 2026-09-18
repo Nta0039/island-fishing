@@ -435,6 +435,82 @@ export const BEACH_CHAIRS = (() => {
 })();
 
 /**
+ * One continuous canopy surface for a beach umbrella.
+ *
+ * A real canopy is a single sheet of fabric: it rises to a point, falls
+ * away toward the rim, sags between the ribs, and carries a valance on
+ * the same piece of cloth. Building it as one mesh (rather than a dozen
+ * separate wedges) gives clean, seam-free geometry with correct normals.
+ *
+ * Vertex colours alternate gore by gore, so the stripes cost nothing.
+ */
+function buildUmbrellaCanopy({ radius, apexY, drop, sag, gores, valance, segments = 72 }) {
+  const RINGS = 10;      // apex -> rim
+  const VAL_RINGS = 3;   // valance hanging below the rim
+  const rows = RINGS + VAL_RINGS + 1;
+  const cols = segments + 1;   // duplicate the seam so UVs stay clean
+
+  const pos = new Float32Array(rows * cols * 3);
+  const col = new Float32Array(rows * cols * 3);
+  const idx = [];
+  const goreArc = (Math.PI * 2) / gores;
+  const dark = new THREE.Color('#000000');
+
+  /* Alternate between the umbrella's colour and a pale cream. */
+  const colour = new THREE.Color('#ffffff');
+  const pale = new THREE.Color('#f4f1e8');
+
+  for (let j = 0; j < rows; j++) {
+    const onValance = j > RINGS;
+    const k = onValance ? j - RINGS : 0;
+    const t = onValance ? 1 : j / RINGS;
+
+    for (let i = 0; i < cols; i++) {
+      const a = (i / segments) * Math.PI * 2;
+      /* 0 along a rib, 1 halfway between two ribs. */
+      const between = (1 - Math.cos(gores * a)) / 2;
+
+      const r = onValance
+        ? radius * (1 + 0.035 * k)          // the skirt flares very slightly
+        : radius * t;
+
+      const y = onValance
+        ? apexY - drop - sag * between - (valance * k) / VAL_RINGS
+        : apexY - drop * Math.pow(t, 1.3) - sag * t * t * between;
+
+      const o = (j * cols + i) * 3;
+      pos[o] = Math.cos(a) * r;
+      pos[o + 1] = y;
+      pos[o + 2] = Math.sin(a) * r;
+
+      /* Stripe by gore; the valance alternates one step out of phase so
+         the skirt reads as a separate band of cloth. */
+      const gore = Math.floor(i / (segments / gores));
+      const stripe = onValance ? (gore + 1) % 2 : gore % 2;
+      const c = stripe ? pale : colour;
+      col[o] = c.r; col[o + 1] = c.g; col[o + 2] = c.b;
+    }
+  }
+
+  for (let j = 0; j < rows - 1; j++) {
+    for (let i = 0; i < cols - 1; i++) {
+      const a = j * cols + i;
+      const b = a + 1;
+      const c = a + cols;
+      const d = c + 1;
+      idx.push(a, c, b, b, c, d);
+    }
+  }
+
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
+  geo.setIndex(idx);
+  geo.computeVertexNormals();
+  return geo;
+}
+
+/**
  * A wooden beach lounger. Built facing +z with the reclined back at -z,
  * so a lounging avatar lines up with it directly.
  */
@@ -586,116 +662,95 @@ function buildBeachChair(chair) {
   if (chair.umbrella) {
     const UX = -1.4;
     const UZ = -0.25;
-    const canopyMat = toonMaterial({ color: chair.umbrellaColor || '#e8574a', side: THREE.DoubleSide });
-    const paleMat = toonMaterial({ color: '#f4f1e8', side: THREE.DoubleSide });
-    const TOP = 2.95;
-    const RIB = 1.6;
-    const GORES = 12;
-    const seg = (Math.PI * 2) / GORES;
-    const DROOP = 0.3;
 
-    /* Weighted base plate with a domed foot and four brass bolts. */
-    const basePlate = new THREE.Mesh(new THREE.CylinderGeometry(0.36, 0.42, 0.09, 22), ironMat);
-    basePlate.position.set(UX, 0.045, UZ);
-    g.add(basePlate);
-    const baseDome = new THREE.Mesh(
-      new THREE.SphereGeometry(0.27, 20, 12, 0, Math.PI * 2, 0, Math.PI / 2), ironMat
+    /* Real beach-umbrella proportions: a canopy about 2m across on a
+       pole a little over 2m tall, so it clears a seated head easily. */
+    const RADIUS = 1.05;
+    const POLE_TOP = 2.15;
+    const APEX = 2.24;
+    const DROP = 0.34;
+    const SAG = 0.075;
+    const GORES = 8;
+    const VALANCE = 0.18;
+
+    const fabric = toonMaterial({
+      vertexColors: true,
+      side: THREE.DoubleSide,
+    });
+
+    /* The canopy and its valance are one continuous sheet of cloth. */
+    const canopy = new THREE.Mesh(
+      buildUmbrellaCanopy({
+        radius: RADIUS,
+        apexY: APEX,
+        drop: DROP,
+        sag: SAG,
+        gores: GORES,
+        valance: VALANCE,
+      }),
+      fabric
     );
-    baseDome.scale.set(1, 0.62, 1);
-    baseDome.position.set(UX, 0.09, UZ);
-    g.add(baseDome);
-    for (let i = 0; i < 4; i++) {
-      const a = (i / 4) * Math.PI * 2 + 0.4;
-      const bolt = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, 0.08, 8), brassMat);
-      bolt.position.set(UX + Math.cos(a) * 0.3, 0.1, UZ + Math.sin(a) * 0.3);
-      g.add(bolt);
-    }
+    canopy.position.set(UX, 0, UZ);
+    g.add(canopy);
 
-    /* Two-piece pole with a brass tilt collar between the sections. */
-    const lower = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.062, 1.5, 14), frameDark);
-    lower.position.set(UX, 0.78, UZ);
-    g.add(lower);
-    const collar = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, 0.16, 14), brassMat);
-    collar.position.set(UX, 1.55, UZ);
-    g.add(collar);
-    const upper = new THREE.Mesh(new THREE.CylinderGeometry(0.036, 0.05, 1.35, 14), frameDark);
-    upper.position.set(UX, 2.28, UZ);
-    g.add(upper);
-
-    /* Canopy: twelve curved gores, each dropped outward about its own
-       tangential axis so the whole thing reads as a real fabric cone
-       rather than a flat disc. */
+    /* Eight ribs following the canopy underside, hub to rim. */
+    const ribParts = [];
     for (let i = 0; i < GORES; i++) {
-      const a0 = i * seg;
-      const shape = new THREE.Shape();
-      shape.moveTo(0, 0);
-      shape.lineTo(Math.cos(a0) * RIB, Math.sin(a0) * RIB);
-      shape.absarc(0, 0, RIB, a0, a0 + seg, false);
-      shape.lineTo(0, 0);
-      const geo = new THREE.ExtrudeGeometry(shape, {
-        depth: 0.035, bevelEnabled: false, curveSegments: 4,
-      });
-      geo.rotateX(-Math.PI / 2);
-      const panel = new THREE.Mesh(geo, i % 2 ? paleMat : canopyMat);
-      const mid = a0 + seg / 2;
-      panel.quaternion.setFromAxisAngle(
-        new THREE.Vector3(-Math.sin(mid), 0, Math.cos(mid)).normalize(), DROOP
-      );
-      panel.position.set(UX, TOP, UZ);
-      g.add(panel);
+      const a = (i / GORES) * Math.PI * 2;
+      const len = Math.hypot(RADIUS, DROP) - 0.06;
+      const rib = new THREE.BoxGeometry(len, 0.022, 0.022);
+      /* Build it along +x, tip it to match the canopy's slope, swing it
+         to its bearing, and only then slide it out from the hub. */
+      rib.rotateZ(-Math.atan2(DROP, RADIUS));
+      rib.rotateY(-a);
+      rib.translate(Math.cos(a) * (len / 2), -0.035, Math.sin(a) * (len / 2));
+      tint(rib, '#7d766c');
+      ribParts.push(rib);
     }
+    const ribs = new THREE.Mesh(
+      mergeGeometries(ribParts, false),
+      toonMaterial({ vertexColors: true })
+    );
+    ribs.position.set(UX, APEX, UZ);
+    g.add(ribs);
 
-    /* Ribs running hub to rim, visible from underneath. */
-    for (let i = 0; i < GORES; i++) {
-      const a = i * seg;
-      const pivot = new THREE.Group();
-      pivot.position.set(UX, TOP - 0.05, UZ);
-      pivot.quaternion.setFromAxisAngle(
-        new THREE.Vector3(-Math.sin(a), 0, Math.cos(a)).normalize(), DROOP
-      );
-      const rib = new THREE.Mesh(new THREE.BoxGeometry(RIB - 0.06, 0.028, 0.028), frameDark);
-      rib.position.set(Math.cos(a) * (RIB / 2), 0, Math.sin(a) * (RIB / 2));
-      rib.rotation.y = -a;
-      pivot.add(rib);
-      g.add(pivot);
-    }
-
-    /* Hub, cap, finial and a hanging tie cord. */
-    const hub = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.13, 0.1, 16), brassMat);
-    hub.position.set(UX, TOP + 0.02, UZ);
+    /* Hub the ribs meet under. */
+    const hub = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.075, 0.07, 16), brassMat);
+    hub.position.set(UX, APEX - 0.03, UZ);
     g.add(hub);
-    const cap = new THREE.Mesh(new THREE.ConeGeometry(0.09, 0.16, 14), frameDark);
-    cap.position.set(UX, TOP + 0.14, UZ);
-    g.add(cap);
-    const finial = new THREE.Mesh(new THREE.SphereGeometry(0.06, 12, 10), brassMat);
-    finial.position.set(UX, TOP + 0.25, UZ);
+
+    /* Pole: one tapered shaft with a collar, a ferrule at the top and a
+       weighted foot at the bottom. */
+    const pole = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.024, 0.034, POLE_TOP, 16), frameDark
+    );
+    pole.position.set(UX, POLE_TOP / 2, UZ);
+    g.add(pole);
+
+    const collar = new THREE.Mesh(new THREE.CylinderGeometry(0.042, 0.042, 0.08, 16), brassMat);
+    collar.position.set(UX, 1.18, UZ);
+    g.add(collar);
+
+    const ferrule = new THREE.Mesh(new THREE.ConeGeometry(0.045, 0.14, 16), brassMat);
+    ferrule.position.set(UX, POLE_TOP + 0.05, UZ);
+    g.add(ferrule);
+
+    const finial = new THREE.Mesh(new THREE.SphereGeometry(0.038, 14, 10), brassMat);
+    finial.position.set(UX, POLE_TOP + 0.15, UZ);
     g.add(finial);
-    const cord = new THREE.Mesh(new THREE.TorusGeometry(0.09, 0.014, 6, 14), paleMat);
-    cord.position.set(UX + 0.13, 2.05, UZ);
-    cord.rotation.y = Math.PI / 2;
-    g.add(cord);
 
-    /* Scalloped valance hanging from the rim, plus a slim edge ring. */
-    const rimY = TOP - Math.sin(DROOP) * RIB;
-    const rimR = Math.cos(DROOP) * RIB;
-    for (let i = 0; i < GORES; i++) {
-      const a = (i + 0.5) * seg;
-      const drop = new THREE.Mesh(
-        new THREE.BoxGeometry(0.26, 0.2, 0.035), i % 2 ? canopyMat : paleMat
-      );
-      drop.position.set(
-        UX + Math.cos(a) * (rimR - 0.02), rimY - 0.11, UZ + Math.sin(a) * (rimR - 0.02)
-      );
-      drop.rotation.y = -a;
-      drop.rotation.x = 0.16;
-      g.add(drop);
-    }
-    const rimRing = new THREE.Mesh(new THREE.TorusGeometry(rimR, 0.02, 6, 44), frameDark);
-    rimRing.rotation.x = Math.PI / 2;
-    rimRing.position.set(UX, rimY, UZ);
-    g.add(rimRing);
+    /* Base: a low plate with a domed weight, so it reads as standing on
+       the sand under its own mass. */
+    const plate = new THREE.Mesh(new THREE.CylinderGeometry(0.26, 0.3, 0.06, 22), ironMat);
+    plate.position.set(UX, 0.03, UZ);
+    g.add(plate);
+    const weight = new THREE.Mesh(
+      new THREE.SphereGeometry(0.2, 20, 12, 0, Math.PI * 2, 0, Math.PI / 2), ironMat
+    );
+    weight.scale.set(1, 0.5, 1);
+    weight.position.set(UX, 0.06, UZ);
+    g.add(weight);
   }
-
   g.userData.chair = chair;
   g.userData.rod = rod;
 
@@ -4228,9 +4283,13 @@ export function createWorld(scene) {
   const reefs = buildReefs(rng);
   scene.add(reefs);
   scene.add(buildRocks(rng));
-  scene.add(buildTrees(rng));
+  /* Scenery the camera should see through when it blocks the player:
+     trees and the taller ground cover, but not the low flowers. */
+  const foliage = new THREE.Group();
+  foliage.add(buildTrees(rng));
+  foliage.add(buildGrass(rng));
+  scene.add(foliage);
   scene.add(buildFlowers(rng));
-  scene.add(buildGrass(rng));
   scene.add(buildBeachProps(rng));
 
   const shop = buildIslandShop();
@@ -4296,6 +4355,7 @@ export function createWorld(scene) {
     shop,
     pier,
     beachChairs,
+    foliage,
     lighthouse,
     merchant,
     boat,

@@ -467,6 +467,10 @@ function onInit(data) {
     scene.remove(local.group);
     local.group = null;
   }
+  if (local.silhouette) {
+    scene.remove(local.silhouette);
+    local.silhouette = null;
+  }
   for (const rp of players.values()) scene.remove(rp.group);
   players.clear();
   sittingSeat = null;
@@ -476,6 +480,11 @@ function onInit(data) {
   /* Yaw first, then recline — so lying back on a lounger tips the body
      about the chair's own axis rather than the world's. */
   local.group.rotation.order = 'YXZ';
+
+  /* X-ray stand-in, shown when foliage blocks the camera. */
+  local.silhouette = makeSilhouette(local.group);
+  scene.add(local.silhouette);
+  local.occluded = false;
   local.group.position.set(local.x, standY(local.x, local.z), local.z);
   scene.add(local.group);
 
@@ -645,6 +654,8 @@ function refreshTrade() {
 function openTrade() {
   if (tradeOpen) return;
   UI.showCodex(false);
+  /* Give the cursor back so the shop can be clicked. */
+  input.releasePointerLock();
   tradeOpen = true;
   UI.showTradePanel(true);
   refreshTrade();
@@ -664,6 +675,8 @@ UI.onTradeClose(closeTrade);
 function openCodex() {
   if (!joined) return;
   if (tradeOpen) closeTrade();
+  /* Give the cursor back so the gallery can be clicked. */
+  input.releasePointerLock();
   UI.renderCodex({ fish: [...catchById.values()].filter((f) => f.weight), discovered: playerData.discovered });
   UI.showCodex(true);
 }
@@ -694,6 +707,27 @@ window.addEventListener('keydown', (e) => {
   if (tradeOpen) { closeTrade(); return; }
   /* Escape also reels the line back in. */
   if (local.fishing === 'waiting' || local.fishing === 'hooked') cancelFishing();
+});
+
+/* PC shortcuts. While the mouse is captured by pointer lock the on-screen
+   buttons cannot be clicked, so every action needs a key. */
+function clickIfVisible(btn) {
+  if (btn && !btn.classList.contains('hidden')) { btn.click(); return true; }
+  return false;
+}
+
+window.addEventListener('keydown', (e) => {
+  if (!joined || tradeOpen || UI.isCodexOpen() || telescopeMode) return;
+  if (e.code === 'KeyF') {
+    if (local.fishing === 'idle') clickIfVisible(UI.dom.fishingBtn);
+    else cancelFishing();
+  } else if (e.code === 'KeyE') {
+    if (local.fishing !== 'idle' || sittingSeat || lyingChair) return;
+    clickIfVisible(UI.dom.collectBtn)
+      || clickIfVisible(UI.dom.useBtn)
+      || clickIfVisible(UI.dom.sitBtn)
+      || clickIfVisible(UI.dom.tradeBtn);
+  }
 });
 
 /* ------------------------------------------------------------------ */
@@ -921,6 +955,83 @@ function updateChairRods() {
 }
 
 /* ------------------------------------------------------------------ */
+/*  Foliage occlusion                                                  */
+/* ------------------------------------------------------------------ */
+
+/**
+ * An x-ray copy of the avatar: the same meshes, drawn on top of the world
+ * with depth testing off, so the character stays visible when a tree or a
+ * bush is between them and the camera. It is only shown when something
+ * actually blocks the view, and only then is its pose synced.
+ */
+function makeSilhouette(source) {
+  const group = new THREE.Group();
+  const mat = new THREE.MeshBasicMaterial({
+    color: 0x9fe4ff,
+    transparent: true,
+    opacity: 0.3,
+    depthTest: false,
+    depthWrite: false,
+    fog: false,
+  });
+  const sources = [];
+  source.traverse((o) => {
+    if (!o.isMesh || !o.geometry) return;
+    const m = new THREE.Mesh(o.geometry, mat);
+    m.matrixAutoUpdate = false;
+    m.frustumCulled = false;
+    group.add(m);
+    sources.push(o);
+  });
+  group.renderOrder = 999;
+  group.visible = false;
+  group.userData.sources = sources;
+  return group;
+}
+
+/** Copies the live avatar's pose onto the silhouette. */
+function syncSilhouette(sil, source) {
+  const sources = sil.userData.sources;
+  source.updateWorldMatrix(true, true);
+  for (let i = 0; i < sources.length; i++) {
+    sil.children[i].matrix.copy(sources[i].matrixWorld);
+  }
+}
+
+const _occDir = new THREE.Vector3();
+const _occOrigin = new THREE.Vector3();
+const _occRay = new THREE.Raycaster();
+let occFrame = 0;
+
+/** True when scenery sits between the camera and the player. */
+function foliageBlocksView() {
+  if (!local.group || !world.foliage) return false;
+  _occOrigin.copy(camera.position);
+  _occDir.set(local.x, local.group.position.y + 1.1, local.z).sub(_occOrigin);
+  const dist = _occDir.length();
+  if (dist < 0.4) return false;
+  _occDir.divideScalar(dist);
+  _occRay.set(_occOrigin, _occDir);
+  _occRay.near = 0;
+  /* Ignore anything right on top of the player — only count real cover. */
+  _occRay.far = dist - 0.5;
+  return _occRay.intersectObject(world.foliage, true).length > 0;
+}
+
+/** Toggles the x-ray silhouette. Cheap enough to run at a low rate. */
+function updateOcclusion(dt) {
+  const sil = local.silhouette;
+  if (!sil || !local.group) return;
+  /* Only re-test a few times a second; the ray costs more than a frame. */
+  occFrame = (occFrame + 1) % 5;
+  if (occFrame === 0) {
+    local.occluded = foliageBlocksView();
+  }
+  sil.visible = !!local.occluded && cameraMode === 'follow';
+  if (sil.visible) syncSilhouette(sil, local.group);
+}
+
+/* ------------------------------------------------------------------ */
 /*  Resize                                                             */
 /* ------------------------------------------------------------------ */
 
@@ -1030,6 +1141,7 @@ function animate() {
     updateAvatar(local.group, dt, moving, local.fishing, !!sittingSeat, !!lyingChair);
   }
   updateChairRods();
+  updateOcclusion(dt);
 
   stepFootprints(local, moving, local.rotation, local.x, local.z);
 
