@@ -219,11 +219,6 @@ canvas.addEventListener('pointerup', (e) => {
   if (telescopeMode) exitTelescope();
 });
 
-UI.onUseClick(() => {
-  if (telescopeMode) exitTelescope();
-  else if (nearTelescope()) enterTelescope();
-});
-
 /* Telescope look: the mouse drives it directly, exactly like mouse-look
    in the rest of the game. Touch devices swipe instead, since they have
    no pointer to move. */
@@ -728,7 +723,7 @@ function closeTrade() {
   UI.showTradePanel(false);
 }
 
-UI.onTradeClick(openTrade);
+/* The shop is opened from the context action prompt, not a fixed button. */
 UI.onTradeClose(closeTrade);
 
 /* ---------- Fish Encyclopedia ---------- */

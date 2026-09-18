@@ -41,7 +41,6 @@ export const dom = {
   playBtn: $('play-btn'),
   startError: $('start-error'),
   colorPicker: $('color-picker'),
-  tradeBtn: $('trade-btn'),
   tradePanel: $('trade-panel'),
   tradeCoins: $('trade-coins'),
   tradeClose: $('trade-close'),
