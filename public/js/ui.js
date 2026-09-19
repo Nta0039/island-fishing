@@ -21,6 +21,8 @@ export const dom = {
   sgFill: $('sg-fill'),
   sgLabel: $('sg-label'),
   sgTime: $('sg-time'),
+  sgArt: $('sg-art'),
+  struggleBtn: $('struggle-btn'),
   infoPanel: $('info-panel'),
   qrCard: $('qr-card'),
   qrCanvas: $('qr-canvas'),
@@ -95,8 +97,20 @@ export function fishIconUrl(fish) {
   return `/img/fish/${encodeURIComponent(fish.name)}.png`;
 }
 
+/**
+ * Beach finds have their own painted icons, keyed by the collectible id so
+ * they never collide with the fish art above. Anything without art (the
+ * plain sea shell) falls back to its emoji, exactly like an unknown fish.
+ */
+const ITEM_ART = {
+  crab: '/img/items/crab.png',
+  coconut: '/img/items/coconut.png',
+  starfish: '/img/items/starfish.png',
+  conch: '/img/items/conch.png',
+};
+
 function iconHtml(fish, cls = 'fish-icon') {
-  const url = fishIconUrl(fish);
+  const url = (fish && ITEM_ART[fish.id]) || fishIconUrl(fish);
   const emoji = (fish && fish.emoji) || '🐟';
   if (!url) return `<span class="${cls} emoji">${emoji}</span>`;
   return `<img class="${cls}" src="${url}" alt="" draggable="false" data-emoji="${emoji}">`;
@@ -365,11 +379,42 @@ export function onCancelClick(handler) {
 export function showStruggle(on, s) {
   if (!dom.struggle) return;
   dom.struggle.classList.toggle('hidden', !on);
+  /* The fight-back button is the touch stand-in for holding Space. It is
+     marked touch-only in CSS, so on desktop this is a harmless no-op. */
+  if (dom.struggleBtn) dom.struggleBtn.classList.toggle('hidden', !on);
   if (on && dom.sgLabel) {
     const touch = document.body.classList.contains('touch');
-    dom.sgLabel.textContent = touch ? 'Mash the button to keep it!' : 'Mash Space to keep it!';
+    dom.sgLabel.textContent = touch ? 'Tap the button to keep it!' : 'Mash Space to keep it!';
   }
   if (on && dom.sgTime && s) dom.sgTime.textContent = `${s.window}s`;
+}
+
+/**
+ * Yanks the illustration to one side and back, so every input reads as a
+ * physical tug on the line. The class is removed and re-added (with a
+ * reflow between) so rapid taps replay the animation from the start.
+ */
+export function pulseStruggle() {
+  const el = document.querySelector('.sg-art');
+  if (!el) return;
+  el.classList.remove('shake');
+  void el.offsetWidth;
+  el.classList.add('shake');
+}
+
+/**
+ * Wires the mobile fight-back button. `handler(true)` fires while pressed
+ * and `handler(false)` on release, mirroring how Space is held on desktop.
+ */
+export function onStrugglePress(handler) {
+  const btn = dom.struggleBtn;
+  if (!btn) return;
+  const press = (e) => { e.preventDefault(); handler(true); };
+  const release = () => handler(false);
+  btn.addEventListener('pointerdown', press);
+  btn.addEventListener('pointerup', release);
+  btn.addEventListener('pointercancel', release);
+  btn.addEventListener('pointerleave', release);
 }
 
 /** `progress` is how much of the struggle is won, `secondsLeft` the time. */
@@ -654,12 +699,12 @@ export function renderCodex(state) {
 
 /* ------------------------------ Notifications ------------------------------ */
 
-export function toast(playerName, fish) {
+export function toast(playerName, fish, verb = 'caught a') {
   const div = document.createElement('div');
   div.className = `toast rarity-${fish.rarity}`;
   div.innerHTML =
     iconHtml(fish) +
-    `<span class="t-body"><b>${escapeHtml(playerName)}</b> caught a ` +
+    `<span class="t-body"><b>${escapeHtml(playerName)}</b> ${verb} ` +
     `<span class="t-name">${escapeHtml(fish.name)}</span>` +
     `<span class="t-rarity">${fish.rarity}</span></span>`;
   dom.toasts.appendChild(div);
@@ -682,8 +727,9 @@ export function showCatchCard(fish, opts = {}) {
 
   card.classList.remove('hidden', 'show', 'out', 'rarity-common', 'rarity-medium', 'rarity-high', 'rarity-rare');
   card.classList.add(`rarity-${fish.rarity}`);
+  const kicker = opts.kicker || (opts.isNew ? 'New species!' : 'You caught');
   card.innerHTML =
-    `<div class="cc-kicker">${opts.isNew ? 'New species!' : 'You caught'}</div>` +
+    `<div class="cc-kicker">${kicker}</div>` +
     iconHtml(fish) +
     `<div class="cc-name">${escapeHtml(fish.name)}</div>` +
     `<div class="cc-meta">` +

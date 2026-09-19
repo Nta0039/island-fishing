@@ -1040,6 +1040,58 @@ img.fish-icon {
 }
 #sg-time { font-variant-numeric: tabular-nums; opacity: 0.75; }
 
+/* Painted struggle art, sitting right above the tug-of-war bar. */
+#struggle .sg-art {
+  display: block;
+  width: 132px;
+  height: 132px;
+  margin: 0 auto 10px;
+  object-fit: contain;
+  transform-origin: 50% 88%;
+  filter: drop-shadow(0 8px 14px rgba(0, 0, 0, 0.5));
+  -webkit-user-drag: none;
+  user-select: none;
+}
+/* Emoji fallback if the art is missing (swapped in by the global handler). */
+#struggle .sg-art.emoji {
+  font-size: 76px;
+  line-height: 132px;
+  text-align: center;
+}
+#struggle .sg-art.shake { animation: sgShake 0.3s cubic-bezier(0.36, 0.07, 0.19, 0.97); }
+@keyframes sgShake {
+  0%   { transform: rotate(0deg)  translateX(0); }
+  20%  { transform: rotate(-8deg) translateX(-7px); }
+  45%  { transform: rotate(7deg)  translateX(7px); }
+  70%  { transform: rotate(-4deg) translateX(-4px); }
+  100% { transform: rotate(0deg)  translateX(0); }
+}
+
+/* Touch-only fight-back button: the mobile stand-in for holding Space. */
+#struggle-btn {
+  position: absolute;
+  right: max(20px, env(safe-area-inset-right));
+  bottom: max(26px, env(safe-area-inset-bottom));
+  width: 136px;
+  height: 136px;
+  border-radius: 50%;
+  border: 3px solid rgba(255, 255, 255, 0.82);
+  color: #4a1200;
+  font: inherit;
+  font-size: 15px;
+  font-weight: 900;
+  letter-spacing: 0.6px;
+  line-height: 1.15;
+  text-align: center;
+  background: radial-gradient(circle at 35% 28%, #ffd6b0, #ff7a1f 62%, #e24b00);
+  box-shadow: 0 0 30px rgba(255, 130, 40, 0.75);
+  touch-action: none;
+  z-index: 6;
+  animation: strugglePulse 0.5s ease-in-out infinite alternate;
+}
+#struggle-btn:active { box-shadow: 0 0 46px rgba(255, 180, 80, 1); filter: brightness(1.15); }
+@keyframes strugglePulse { from { transform: scale(0.97); } to { transform: scale(1.05); } }
+
 /* ---------------- Toasts ---------------- */
 #toasts {
   position: absolute;

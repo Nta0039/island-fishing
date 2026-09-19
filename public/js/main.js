@@ -610,6 +610,7 @@ function onFishingState(msg) {
     } else if (msg.state === 'idle') {
       local.fish = null;
       local.struggle = null;
+      input.hold = false;
       fishing.reset();
       UI.showMinigame(false);
       UI.showHook(false);
@@ -650,6 +651,9 @@ function onFishEscaped(d) {
   if (!d || d.id !== myId) return;
   UI.showStruggle(false);
   local.struggle = null;
+  /* The fight-back button may vanish under the player's finger, so make
+     sure a held input cannot leak into the next cast. */
+  input.hold = false;
   if (d.reason === 'seagull') {
     UI.notify(`A seagull made off with your ${d.fish ? d.fish.name : 'fish'}!`);
   } else if (d.reason === 'full') {
@@ -689,6 +693,7 @@ function updateStruggle(dt) {
   if (s.t >= s.window + 0.5) {
     UI.showStruggle(false);
     local.struggle = null;
+    input.hold = false;
   }
 }
 
@@ -705,10 +710,14 @@ function onFishCaught(record) {
 }
 
 function onCollected(record) {
+  UI.toast(record.name, record.item, 'found a');
   UI.addCatchLog(`${record.name} 🧺`, record.item);
-  if (record.id === myId && local.group) {
-    _head.set(local.x, local.group.position.y + 2.6, local.z);
-    UI.pickupPopup(UI.projectToScreen(_head, camera), `+1 ${record.item.name}`);
+  if (record.id === myId) {
+    /* Same presentation as a landed fish, just with finder wording. */
+    UI.showCatchCard(record.item, {
+      kicker: 'You found',
+      value: record.item.value,
+    });
   }
 }
 
@@ -901,6 +910,26 @@ UI.onPauseClick(() => {
 UI.onPauseClose(closePause);
 UI.onPauseSave(() => saveProgress(false));
 UI.onPauseSaveExit(() => saveProgress(true));
+
+/* ---------- Seagull struggle input ---------- */
+
+/* The mobile fight-back button holds the line exactly like Space does on
+   desktop. Every press — a button tap or a Space/F tap — also shakes the
+   illustration, so the input is felt as a physical tug. */
+UI.onStrugglePress((down) => {
+  if (!local.struggle) return;
+  if (down) {
+    input.hold = true;
+    UI.pulseStruggle();
+  } else {
+    input.hold = false;
+  }
+});
+
+window.addEventListener('keydown', (e) => {
+  if (!local.struggle) return;
+  if (e.code === 'Space') UI.pulseStruggle();
+});
 
 /* Typing clears the "name required" warning. */
 UI.onNameInput(() => {
