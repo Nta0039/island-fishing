@@ -1290,3 +1290,288 @@ img.fish-icon {
   #joystick-zone { width: 132px; height: 132px; }
   #joystick-knob { width: 54px; height: 54px; margin: -27px 0 0 -27px; }
 }
+
+/* ================= Inventory ================= */
+
+/* The top-right twin of the encyclopedia button. */
+#inventory-btn {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  background: var(--ui-bg);
+  border: 1px solid var(--ui-border);
+  backdrop-filter: blur(8px);
+  color: #eaf6ff;
+  padding: 8px 15px;
+  border-radius: 999px;
+  font: inherit;
+  font-weight: 700;
+  font-size: 13px;
+  cursor: pointer;
+  transition: background 0.15s, transform 0.12s;
+}
+#inventory-btn:hover { background: rgba(255, 255, 255, 0.16); }
+#inventory-btn:active { transform: scale(0.96); }
+#inventory-btn .inv-icon { font-size: 15px; line-height: 1; }
+
+#inventory-panel {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: rgba(4, 12, 22, 0.62);
+  backdrop-filter: blur(4px);
+}
+.inv-card {
+  width: min(94vw, 620px);
+  max-height: 86vh;
+  display: flex;
+  flex-direction: column;
+  background: rgba(10, 24, 40, 0.97);
+  border: 1px solid var(--ui-border);
+  border-radius: 18px;
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.65);
+  overflow: hidden;
+}
+.inv-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--ui-border);
+}
+.inv-title { font-weight: 800; font-size: 16px; flex: 1; }
+.inv-coins { font-size: 14px; font-weight: 800; color: #ffd97a; }
+#inventory-close {
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(255, 255, 255, 0.12);
+  color: #eaf6ff;
+  font-size: 15px;
+  cursor: pointer;
+}
+#inventory-close:hover { background: rgba(255, 90, 90, 0.75); }
+
+.inv-cap { padding: 12px 18px 4px; }
+.inv-cap-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  font-weight: 700;
+  color: #bfe3ff;
+  margin-bottom: 7px;
+}
+.inv-bar {
+  height: 9px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.12);
+  overflow: hidden;
+}
+#inv-bar-fill {
+  height: 100%;
+  width: 0%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #4dd4ac, #7ee8c0);
+  transition: width 0.25s ease;
+}
+#inv-bar-fill.warn { background: linear-gradient(90deg, #ffb347, #ffd166); }
+#inv-bar-fill.full { background: linear-gradient(90deg, #ff6b6b, #ff9a8b); }
+
+.inv-section-title {
+  padding: 14px 18px 8px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #7fb8dd;
+}
+
+.inv-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(84px, 1fr));
+  gap: 8px;
+  padding: 0 18px 16px;
+  overflow-y: auto;
+}
+.inv-cell {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 9px 6px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  text-align: center;
+}
+.inv-cell .fish-icon,
+.inv-cell .emoji { width: 34px; height: 34px; object-fit: contain; font-size: 26px; line-height: 34px; }
+.inv-cell .inv-name {
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1.15;
+  color: #dcefff;
+  word-break: break-word;
+}
+.inv-cell .inv-qty {
+  position: absolute;
+  top: 5px; right: 6px;
+  font-size: 11px;
+  font-weight: 800;
+  color: #062033;
+  background: #ffd97a;
+  border-radius: 999px;
+  padding: 1px 6px;
+}
+.inv-empty {
+  grid-column: 1 / -1;
+  padding: 18px;
+  text-align: center;
+  font-size: 12px;
+  color: #8fb6d4;
+}
+
+.inv-gear {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 0 18px 18px;
+}
+.gear-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 13px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #dcefff;
+}
+.gear-chip.on {
+  background: linear-gradient(180deg, #ffe680, #ffc21f);
+  border-color: transparent;
+  color: #062033;
+}
+.gear-chip .gear-swatch {
+  width: 11px; height: 11px;
+  border-radius: 50%;
+  border: 1px solid rgba(0, 0, 0, 0.3);
+}
+
+/* ================= Pause menu ================= */
+
+/* The logo doubles as the pause button on touch, where there is no Esc. */
+#brand { cursor: pointer; }
+#brand:active { transform: scale(0.97); }
+
+#pause-panel {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: rgba(4, 12, 22, 0.66);
+  backdrop-filter: blur(5px);
+}
+.pause-card {
+  width: min(92vw, 420px);
+  display: flex;
+  flex-direction: column;
+  background: rgba(10, 24, 40, 0.97);
+  border: 1px solid var(--ui-border);
+  border-radius: 20px;
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.7);
+  overflow: hidden;
+  animation: codexIn 0.22s cubic-bezier(0.2, 1.3, 0.5, 1);
+}
+.pause-head {
+  display: flex;
+  align-items: center;
+  padding: 15px 18px;
+  border-bottom: 1px solid var(--ui-border);
+}
+.pause-title { font-weight: 800; font-size: 17px; flex: 1; }
+#pause-close {
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(255, 255, 255, 0.12);
+  color: #eaf6ff;
+  font-size: 15px;
+  cursor: pointer;
+}
+#pause-close:hover { background: rgba(255, 90, 90, 0.75); }
+
+.pause-status {
+  min-height: 18px;
+  padding: 10px 18px 0;
+  font-size: 12px;
+  font-weight: 700;
+  color: #9fe0ff;
+}
+.pause-status.ok { color: #7ee8c0; }
+.pause-status.err { color: #ff9a8b; }
+
+.pause-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px 18px 16px;
+}
+.pause-btn {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  width: 100%;
+  padding: 14px 16px;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.07);
+  color: #eaf6ff;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.15s, transform 0.12s;
+}
+.pause-btn:hover { background: rgba(255, 255, 255, 0.14); }
+.pause-btn:active { transform: scale(0.985); }
+.pause-btn:disabled { opacity: 0.55; cursor: default; transform: none; }
+.pause-btn.primary {
+  background: linear-gradient(180deg, #ffe680, #ffc21f);
+  border-color: transparent;
+  color: #062033;
+}
+.pause-btn.primary:hover { background: linear-gradient(180deg, #fff0a8, #ffce45); }
+.pause-btn .pb-icon { font-size: 22px; line-height: 1; }
+.pause-btn .pb-text { display: flex; flex-direction: column; gap: 2px; }
+.pause-btn .pb-text b { font-size: 14px; font-weight: 800; }
+.pause-btn .pb-text small { font-size: 11px; opacity: 0.72; font-weight: 600; }
+
+.pause-foot {
+  padding: 0 18px 16px;
+  font-size: 11px;
+  color: #8fb6d4;
+  text-align: center;
+}
+.pause-foot kbd {
+  background: rgba(255, 255, 255, 0.14);
+  border-radius: 4px;
+  padding: 1px 5px;
+  font-size: 10px;
+}
+
+/* Only one of the two hints is relevant to the device in hand. */
+.pf-touch { display: none; }
+body.touch .pf-pc { display: none; }
+body.touch .pf-touch { display: inline; }
+body.touch #inventory-btn .inv-label { display: none; }
+

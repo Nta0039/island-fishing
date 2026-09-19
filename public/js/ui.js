@@ -57,6 +57,20 @@ export const dom = {
   codexCount: $('codex-count'),
   codexTotal: $('codex-total'),
   codexClose: $('codex-close'),
+  inventoryBtn: $('inventory-btn'),
+  inventoryPanel: $('inventory-panel'),
+  inventoryClose: $('inventory-close'),
+  invCoins: $('inv-coins'),
+  invCount: $('inv-count'),
+  invCap: $('inv-cap'),
+  invBarFill: $('inv-bar-fill'),
+  invGrid: $('inv-grid'),
+  invGear: $('inv-gear'),
+  pausePanel: $('pause-panel'),
+  pauseStatus: $('pause-status'),
+  pauseSave: $('pause-save'),
+  pauseSaveExit: $('pause-save-exit'),
+  pauseClose: $('pause-close'),
 };
 
 /* ------------------------------------------------------------------ */
@@ -709,5 +723,148 @@ export function addCatchLog(playerName, fish) {
   dom.catchlogList.prepend(li);
   while (dom.catchlogList.children.length > 9) {
     dom.catchlogList.removeChild(dom.catchlogList.lastChild);
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/*  Inventory                                                          */
+/* ------------------------------------------------------------------ */
+
+let invOpen = false;
+
+export function isInventoryOpen() { return invOpen; }
+
+export function onInventoryClick(handler) {
+  if (dom.inventoryBtn) dom.inventoryBtn.addEventListener('click', handler);
+}
+
+export function onInventoryClose(handler) {
+  if (dom.inventoryClose) dom.inventoryClose.addEventListener('click', handler);
+  /* Clicking the dimmed backdrop, but not the card itself, closes it. */
+  if (dom.inventoryPanel) {
+    dom.inventoryPanel.addEventListener('click', (e) => {
+      if (e.target === dom.inventoryPanel) handler();
+    });
+  }
+}
+
+export function showInventory(on) {
+  invOpen = !!on;
+  if (dom.inventoryPanel) dom.inventoryPanel.classList.toggle('hidden', !on);
+}
+
+/**
+ * Draws the cooler and the shop purchases.
+ *
+ * `state` is { inventory, coins, capacity, carrying, fishById, owned,
+ * equipped, cosmetics }.
+ */
+export function renderInventory(state) {
+  const {
+    inventory = {}, coins = 0, capacity = 50, carrying = 0,
+    fishById = new Map(), owned = [], equipped = {}, cosmetics = [],
+  } = state || {};
+
+  if (dom.invCoins) dom.invCoins.textContent = String(coins);
+  if (dom.invCap) dom.invCap.textContent = String(capacity);
+
+  const used = carrying || Object.values(inventory).reduce((n, c) => n + (Number(c) || 0), 0);
+  if (dom.invCount) dom.invCount.textContent = String(used);
+
+  if (dom.invBarFill) {
+    const pct = capacity > 0 ? Math.min(100, (used / capacity) * 100) : 0;
+    dom.invBarFill.style.width = `${pct}%`;
+    dom.invBarFill.classList.toggle('warn', pct >= 75 && pct < 100);
+    dom.invBarFill.classList.toggle('full', pct >= 100);
+  }
+
+  /* ---- fish and beach finds ---- */
+  if (dom.invGrid) {
+    const entries = Object.entries(inventory)
+      .map(([id, count]) => ({ item: fishById.get(id), count: Number(count) || 0 }))
+      .filter((e) => e.item && e.count > 0)
+      .sort((a, b) => b.count - a.count || a.item.name.localeCompare(b.item.name));
+
+    if (!entries.length) {
+      dom.invGrid.innerHTML = '<div class="inv-empty">Your cooler is empty — go catch something!</div>';
+    } else {
+      dom.invGrid.innerHTML = entries.map(({ item, count }) => (
+        `<div class="inv-cell" title="${escapeHtml(item.name)}">` +
+          `${iconHtml(item)}` +
+          `<span class="inv-qty">${count}</span>` +
+          `<span class="inv-name">${escapeHtml(item.name)}</span>` +
+        `</div>`
+      )).join('');
+    }
+  }
+
+  /* ---- shop purchases ---- */
+  if (dom.invGear) {
+    const byId = new Map(cosmetics.map((c) => [c.id, c]));
+    const list = owned.map((id) => byId.get(id)).filter(Boolean);
+    if (!list.length) {
+      dom.invGear.innerHTML = '<div class="inv-empty">No shop purchases yet.</div>';
+    } else {
+      dom.invGear.innerHTML = list.map((c) => {
+        const isOn = equipped[c.slot] === c.id;
+        const swatch = c.color
+          ? `<span class="gear-swatch" style="background:${c.color}"></span>`
+          : '';
+        return `<span class="gear-chip${isOn ? ' on' : ''}">${swatch}${escapeHtml(c.name)}` +
+          `${isOn ? ' · equipped' : ''}</span>`;
+      }).join('');
+    }
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/*  Pause menu                                                         */
+/* ------------------------------------------------------------------ */
+
+let pauseOpen = false;
+
+export function isPauseOpen() { return pauseOpen; }
+
+/** The painted logo doubles as the pause button on touch devices. */
+export function onPauseClick(handler) {
+  if (dom.brand) dom.brand.addEventListener('click', handler);
+}
+
+export function onPauseClose(handler) {
+  if (dom.pauseClose) dom.pauseClose.addEventListener('click', handler);
+  if (dom.pausePanel) {
+    dom.pausePanel.addEventListener('click', (e) => {
+      if (e.target === dom.pausePanel) handler();
+    });
+  }
+}
+
+export function onPauseSave(handler) {
+  if (dom.pauseSave) dom.pauseSave.addEventListener('click', () => handler(false));
+}
+
+export function onPauseSaveExit(handler) {
+  if (dom.pauseSaveExit) dom.pauseSaveExit.addEventListener('click', () => handler(true));
+}
+
+export function showPause(on) {
+  pauseOpen = !!on;
+  if (dom.pausePanel) dom.pausePanel.classList.toggle('hidden', !on);
+}
+
+/** `kind` is '', 'ok' or 'err'. */
+export function setPauseStatus(text, kind = '') {
+  if (!dom.pauseStatus) return;
+  dom.pauseStatus.textContent = text || '';
+  dom.pauseStatus.classList.remove('ok', 'err');
+  if (kind === 'ok') dom.pauseStatus.classList.add('ok');
+  else if (kind === 'err') dom.pauseStatus.classList.add('err');
+}
+
+/** Locks the save buttons while a write is in flight. */
+export function setPauseBusy(on) {
+  for (const btn of [dom.pauseSave, dom.pauseSaveExit]) {
+    if (!btn) continue;
+    btn.disabled = !!on;
   }
 }

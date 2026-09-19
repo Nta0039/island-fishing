@@ -266,10 +266,6 @@ canvas.addEventListener('pointermove', (e) => {
 canvas.addEventListener('pointerup', () => { _panLastX = null; _panLastY = null; });
 canvas.addEventListener('pointercancel', () => { _panLastX = null; _panLastY = null; });
 
-window.addEventListener('keydown', (e) => {
-  if (e.key === 'Escape') exitTelescope();
-});
-
 /** Returns the aim direction for the current pan and tilt. */
 function telescopeAim(tel) {
   _telAim.copy(tel.userData.aim).applyAxisAngle(_up, telescopePan);
@@ -323,7 +319,10 @@ let catchById = new Map();
 let rarityValue = { common: 6, medium: 15, high: 40, rare: 120 };
 let shop = { rods: [], bobbers: [] };
 let cosmeticById = new Map();
-let playerData = { inventory: {}, coins: 0, owned: [], equipped: {}, discovered: {} };
+let playerData = {
+  inventory: {}, coins: 0, owned: [], equipped: {}, discovered: {},
+  carrying: 0, capacity: 50,
+};
 let tradeOpen = false;
 let tradeTab = 'sell';
 
@@ -427,6 +426,7 @@ function connect(name, color) {
   socket.on('fishCaught', onFishCaught);
   socket.on('struggleStart', onStruggleStart);
   socket.on('fishEscaped', onFishEscaped);
+  socket.on('inventoryFull', onInventoryFull);
   socket.on('playerData', onPlayerData);
   socket.on('tradeResult', onTradeResult);
   socket.on('collectibleAdded', (item) => beachItems.add(item));
@@ -458,6 +458,8 @@ function onInit(data) {
     owned: data.you.owned || [],
     equipped: data.you.equipped || {},
     discovered: data.you.discovered || {},
+    carrying: data.you.carrying || 0,
+    capacity: data.you.capacity || data.inventoryCap || 50,
   };
 
   local.x = data.you.x;
@@ -636,10 +638,19 @@ function onFishEscaped(d) {
   local.struggle = null;
   if (d.reason === 'seagull') {
     UI.notify(`A seagull made off with your ${d.fish ? d.fish.name : 'fish'}!`);
+  } else if (d.reason === 'full') {
+    /* onInventoryFull has already explained; keep this quiet. */
   } else {
     UI.notify('The fish got away — you were too slow.');
   }
   updateHint();
+}
+
+/** The cooler is at capacity, so the catch had to be let go. */
+function onInventoryFull(d) {
+  const cap = (d && d.cap) || playerData.capacity || 50;
+  UI.notify(`Cooler full (${cap}/${cap}) — sell some fish to David before catching more.`);
+  UI.setHint(`Cooler full — ${cap}/${cap}`);
 }
 
 /** Drives the tug-of-war bar and reports the held time to the server. */
@@ -694,9 +705,12 @@ function onPlayerData(d) {
     owned: d.owned || [],
     equipped: d.equipped || {},
     discovered: d.discovered || playerData.discovered || {},
+    carrying: d.carrying || 0,
+    capacity: d.capacity || playerData.capacity || 50,
   };
   applyCosmetics(local.group, playerData.equipped, true);
   if (tradeOpen) refreshTrade();
+  if (UI.isInventoryOpen()) refreshInventory();
 }
 
 function onTradeResult(r) {
@@ -764,6 +778,116 @@ function closeCodex() {
 UI.onCodexClick(openCodex);
 UI.onCodexClose(closeCodex);
 
+/* ---------- Inventory ---------- */
+function refreshInventory() {
+  UI.renderInventory({
+    inventory: playerData.inventory,
+    coins: playerData.coins,
+    capacity: playerData.capacity,
+    carrying: playerData.carrying,
+    fishById: catchById,
+    owned: playerData.owned,
+    equipped: playerData.equipped,
+    cosmetics: [...shop.rods, ...shop.bobbers],
+  });
+}
+
+function openInventory() {
+  if (!joined || UI.isInventoryOpen()) return;
+  if (tradeOpen) closeTrade();
+  if (UI.isCodexOpen()) closeCodex();
+  /* Give the cursor back so the grid can be scrolled and clicked. */
+  input.releasePointerLock();
+  UI.showInventory(true);
+  refreshInventory();
+}
+
+function closeInventory() {
+  if (!UI.isInventoryOpen()) return;
+  UI.showInventory(false);
+}
+
+UI.onInventoryClick(openInventory);
+UI.onInventoryClose(closeInventory);
+
+/* ---------- Pause menu ---------- */
+function openPause() {
+  if (!joined || UI.isPauseOpen()) return;
+  /* The other panels would sit underneath the pause card. */
+  if (tradeOpen) closeTrade();
+  if (UI.isInventoryOpen()) closeInventory();
+  if (UI.isCodexOpen()) closeCodex();
+  input.releasePointerLock();
+  UI.setPauseStatus('');
+  UI.setPauseBusy(false);
+  UI.showPause(true);
+}
+
+function closePause() {
+  if (!UI.isPauseOpen()) return;
+  UI.showPause(false);
+  UI.setPauseStatus('');
+}
+
+/**
+ * Pushes the whole player to the database on demand — cooler, encyclopedia,
+ * purse, shop purchases and tallies. `thenLeave` is the second button: it
+ * saves first and only returns to the title once the write is confirmed.
+ */
+function saveProgress(thenLeave) {
+  if (!socket || !socket.connected) {
+    UI.setPauseStatus('Not connected — cannot save right now.', 'err');
+    return;
+  }
+  UI.setPauseBusy(true);
+  UI.setPauseStatus('Saving…');
+
+  /* The server acks with the result, so we can tell the player the truth
+     rather than assuming the write landed. */
+  let answered = false;
+  const done = (res) => {
+    if (answered) return;
+    answered = true;
+    UI.setPauseBusy(false);
+
+    if (res && res.ok) {
+      const items = `${res.items} item${res.items === 1 ? '' : 's'}`;
+      UI.setPauseStatus(`Saved — ${items}, ${res.coins} coins.`, 'ok');
+      if (thenLeave) setTimeout(returnToTitle, 550);
+      return;
+    }
+    if (res && res.reason === 'disabled') {
+      UI.setPauseStatus('Saving is switched off on this server.', 'err');
+    } else if (res && res.reason === 'blocked') {
+      UI.setPauseStatus('Save server unreachable — progress kept in memory only.', 'err');
+    } else {
+      UI.setPauseStatus('Could not save. Please try again.', 'err');
+    }
+  };
+
+  socket.emit('saveNow', done);
+  /* Never leave the buttons locked if the server goes quiet. */
+  setTimeout(() => done({ ok: false, reason: 'timeout' }), 8000);
+}
+
+function returnToTitle() {
+  try { if (socket) socket.disconnect(); } catch (_) { /* ignore */ }
+  /* A reload is the cleanest reset: it drops the world, the socket and every
+     scrap of session state, and lands back on the title screen. The names
+     this device has used live in localStorage, so the chips survive. */
+  window.location.reload();
+}
+
+UI.onPauseClick(() => {
+  /* The logo is the pause button on touch, where there is no Esc. On
+     desktop it is decorative but harmless to click. */
+  if (UI.isPauseOpen()) closePause();
+  else openPause();
+});
+UI.onPauseClose(closePause);
+UI.onPauseSave(() => saveProgress(false));
+UI.onPauseSaveExit(() => saveProgress(true));
+
 /* Typing clears the "name required" warning. */
 UI.onNameInput(() => {
   if ((UI.dom.nameInput.value || '').trim()) {
@@ -780,17 +904,34 @@ UI.onTradeAction((a) => {
   else if (a.type === 'equip') socket.emit('equipItem', { itemId: a.itemId });
 });
 
+/* Esc pauses the game. While the mouse is captured the browser swallows the
+   key and just releases the pointer, so the pointerlockchange listener below
+   is what actually catches that case; this handler covers the unlocked state
+   and the open panels. */
 window.addEventListener('keydown', (e) => {
   if (e.code !== 'Escape') return;
+  if (UI.isPauseOpen()) { closePause(); return; }
+  if (UI.isInventoryOpen()) { closeInventory(); return; }
+  if (UI.isCodexOpen()) { closeCodex(); return; }
   if (tradeOpen) { closeTrade(); return; }
-  /* Escape also reels the line back in. */
-  if (local.fishing === 'waiting' || local.fishing === 'hooked') cancelFishing();
+  if (telescopeMode) { exitTelescope(); return; }
+  if (!joined) return;
+  openPause();
+});
+
+/* Losing the pointer lock — which is how Esc arrives while the mouse is
+   captured — pauses too, unless a panel already has the cursor. */
+document.addEventListener('pointerlockchange', () => {
+  if (document.pointerLockElement) return;
+  if (!joined || telescopeMode) return;
+  if (UI.isPauseOpen() || UI.isInventoryOpen() || UI.isCodexOpen() || tradeOpen) return;
+  openPause();
 });
 
 /* PC shortcuts. While the mouse is captured by pointer lock the on-screen
    prompt cannot be clicked, so every action needs a key. */
 window.addEventListener('keydown', (e) => {
-  if (!joined || tradeOpen || UI.isCodexOpen()) return;
+  if (!joined || tradeOpen || UI.isCodexOpen() || UI.isInventoryOpen() || UI.isPauseOpen()) return;
   if (e.code === 'KeyF') {
     if (local.fishing === 'waiting' || local.fishing === 'hooked') cancelFishing();
     else if (!currentAction && local.fishing === 'idle') castLine();

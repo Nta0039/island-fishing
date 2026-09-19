@@ -147,6 +147,20 @@ const COSMETICS = [...RODS, ...BOBBERS];
 const DEFAULT_OWNED = ['rod_bamboo', 'bobber_classic'];
 const DEFAULT_EQUIPPED = { rod: 'rod_bamboo', bobber: 'bobber_classic' };
 
+/* Every new angler starts with a purse, so the shop is usable immediately. */
+const START_COINS = 500;
+
+/* The cooler holds this many things in total — fish and beach finds together,
+   counting each individual item rather than each distinct species. */
+const INVENTORY_CAP = 50;
+
+/** How many things the player is carrying, counting duplicates. */
+function inventoryCount(p) {
+  let total = 0;
+  for (const n of Object.values(p.inventory || {})) total += Number(n) || 0;
+  return total;
+}
+
 const players = new Map();
 
 /* Live beach collectibles: id -> { id, type, x, z } */
@@ -501,6 +515,10 @@ function publicPlayer(p) {
       equipped: p.equipped,
       /* Species the player has ever landed — drives the encyclopedia. */
       discovered: p.discovered,
+      /* How full the cooler is, so the HUD can show "12 / 50" without
+         hard-coding the limit on the client. */
+      carrying: inventoryCount(p),
+      capacity: INVENTORY_CAP,
     };
   }
 
@@ -693,7 +711,7 @@ io.on('connection', (socket) => {
       struggle: null,
       timer: null,
       inventory: resume ? { ...saved.inventory } : {},
-      coins: resume ? saved.coins : 0,
+      coins: resume ? saved.coins : START_COINS,
       owned: resume ? [...saved.owned] : [...DEFAULT_OWNED],
       equipped: resume ? { ...saved.equipped } : { ...DEFAULT_EQUIPPED },
       discovered: resume ? { ...saved.discovered } : {},
@@ -744,6 +762,8 @@ io.on('connection', (socket) => {
       maxPlayers: MAX_PLAYERS,
       islandRadius: ISLAND_RADIUS,
       walkLimit: WALK_LIMIT,
+      /* Cooler size, so the HUD never has to hard-code it. */
+      inventoryCap: INVENTORY_CAP,
       /* True when we pulled this name's history back out of the database. */
       restored: !!p.restored,
       /* True when this page's own reconnect resumed an earlier session. */
@@ -825,6 +845,14 @@ io.on('connection', (socket) => {
 
   /** Puts a landed fish in the player's cooler and tells everyone. */
   function awardCatch(sock, p, fish) {
+    /* A full cooler turns the catch away rather than quietly overfilling. */
+    if (inventoryCount(p) >= INVENTORY_CAP) {
+      if (sock) sock.emit('inventoryFull', { cap: INVENTORY_CAP });
+      io.emit('fishEscaped', { id: p.id, name: p.name, fish, reason: 'full' });
+      resetFishing(p, true);
+      return;
+    }
+
     p.inventory[fish.id] = (p.inventory[fish.id] || 0) + 1;
     /* First time this species is landed it unlocks its encyclopedia entry. */
     const isNew = !p.discovered[fish.id];
@@ -912,6 +940,12 @@ io.on('connection', (socket) => {
 
     const def = COLLECTIBLES.find((c) => c.id === item.type);
     if (!def) return;
+
+    /* The cooler is shared with fish, so a full one blocks beach finds too. */
+    if (inventoryCount(p) >= INVENTORY_CAP) {
+      socket.emit('inventoryFull', { cap: INVENTORY_CAP });
+      return;
+    }
 
     p.inventory[def.id] = (p.inventory[def.id] || 0) + 1;
     removeCollectible(item.id);
@@ -1007,6 +1041,40 @@ io.on('connection', (socket) => {
     socket.emit('playerData', privatePlayer(p));
     socket.emit('tradeResult', { ok: true, kind: 'equip', item: item.name });
     io.emit('playerCosmetics', { id: p.id, equipped: p.equipped });
+  });
+
+  /* ---------------------------- Manual save ---------------------------- */
+
+  /**
+   * The pause menu's save buttons. Unlike the debounced writes, this is an
+   * explicit and immediate push of everything the player owns — cooler,
+   * encyclopedia, purse, shop purchases and lifetime tallies — and it answers
+   * with a result so the UI can say whether it genuinely landed.
+   */
+  socket.on('saveNow', (ack) => {
+    const p = players.get(socket.id);
+    const reply = (payload) => { if (typeof ack === 'function') ack(payload); };
+    if (!p) return reply({ ok: false, reason: 'not-playing' });
+
+    /* Keep the in-page session in step too, so a reconnect resumes cleanly. */
+    saveSession(p.session, p);
+
+    if (!db.enabled) return reply({ ok: false, reason: 'disabled' });
+    if (p.persistBlocked) return reply({ ok: false, reason: 'blocked' });
+
+    /* This write supersedes any pending debounced one. */
+    if (p.saveTimer) { clearTimeout(p.saveTimer); p.saveTimer = null; }
+
+    db.savePlayer(p)
+      .then((ok) => {
+        /* Only clear the dirty flag on success, so a failed save is still
+           picked up by the autosave sweep. */
+        if (ok) p.saveDirty = false;
+        reply(ok
+          ? { ok: true, coins: p.coins, items: inventoryCount(p), at: Date.now() }
+          : { ok: false, reason: 'error' });
+      })
+      .catch(() => reply({ ok: false, reason: 'error' }));
   });
 
   /* ---------------------------- Disconnect ---------------------------- */
