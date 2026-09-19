@@ -417,6 +417,20 @@ function connect(name, color) {
     socket.disconnect();
   });
 
+  socket.on('nameTaken', () => {
+    connecting = false;
+    UI.setLoading(false);
+    UI.setStartError('This username is currently in use.');
+    UI.markNameInvalid(true);
+    if (!joined) {
+      cameraMode = 'menu';
+      camera.fov = 60;
+      camera.updateProjectionMatrix();
+      UI.fadeStartScreen(false);
+    }
+    socket.disconnect();
+  });
+
   socket.on('init', onInit);
   socket.on('playerJoined', onPlayerJoined);
   socket.on('playerMoved', onPlayerMoved);

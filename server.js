@@ -687,6 +687,19 @@ io.on('connection', (socket) => {
 
   socket.on('join', async (data) => {
     if (joined) return;
+
+    /* Active-username lock: two players cannot share a name at the same time.
+       Matched case- and space-insensitively, exactly like the database does,
+       so "Big Mike" and "big mike" are the same angler. */
+    const name = safeName(data && data.name);
+    const nameTaken = [...players.values()].some(
+      (q) => db.nameKey(q.name) === db.nameKey(name),
+    );
+    if (nameTaken) {
+      socket.emit('nameTaken', { name });
+      return;
+    }
+
     joined = true;
 
     const sessionId = typeof (data && data.session) === 'string'
@@ -700,7 +713,7 @@ io.on('connection', (socket) => {
     const p = {
       id: socket.id,
       session: sessionId,
-      name: safeName(data && data.name),
+      name,
       color: pickColor(data && data.color, players.size),
       x: resume ? saved.x : sp.x,
       z: resume ? saved.z : sp.z,
