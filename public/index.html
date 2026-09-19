@@ -152,7 +152,9 @@
   <div class="panel">
     <img id="title-art" src="/img/title.png" alt="Island Fishing" />
     <p class="sub">3D multiplayer fishing · up to 10 players</p>
-    <input id="name-input" maxlength="14" placeholder="Enter your name" autocomplete="off" spellcheck="false" />
+    <input id="name-input" maxlength="14" list="name-history" placeholder="Enter your name" autocomplete="off" spellcheck="false" />
+    <datalist id="name-history"></datalist>
+    <div id="name-recent" class="name-recent hidden"></div>
 
     <div class="pick-row">
       <div class="pick-label">Outfit colour</div>

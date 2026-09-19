@@ -73,6 +73,16 @@ if (input.touch) document.body.classList.add('touch');
 UI.initColorPicker(PLAYER_COLORS, 0);
 UI.initInfoCards();
 
+/* Names this device has played under, offered as chips and autocomplete. */
+UI.renderNameHistory();
+UI.onNamePicked((name) => {
+  /* Tapping an old name is a clear intent to play as them; fill the field
+     and clear any earlier "name required" warning. */
+  UI.markNameInvalid(false);
+  UI.setStartError('');
+  void name;
+});
+
 /* ------------------------------------------------------------------ */
 /*  "Join on your phone" QR code                                       */
 /* ------------------------------------------------------------------ */
@@ -303,6 +313,7 @@ const local = {
 const players = new Map(); // id -> remote player
 let socket = null;
 let myId = null;
+let myName = '';
 let joined = false;
 let connecting = false;
 let sendAcc = 0;
@@ -367,6 +378,7 @@ const SESSION_ID = `s${Date.now().toString(36)}${Math.random().toString(36).slic
 function connect(name, color) {
   UI.setStartError('');
   UI.setLoading(true);
+  myName = name;
 
   if (socket) {
     socket.removeAllListeners();
@@ -427,6 +439,10 @@ function onInit(data) {
   myId = data.id;
   joined = true;
   connecting = false;
+
+  /* Remember this name on the device so it is one tap next time, and say
+     so when the server found history for it. */
+  UI.rememberName(myName, data.restored);
 
   catchById = new Map(
     [...data.fishTable, ...(data.collectibleTable || [])].map((f) => [f.id, f])
@@ -490,6 +506,13 @@ function onInit(data) {
   UI.setOnline(data.players.length, data.maxPlayers);
   UI.showGame(true);
   UI.setHint('');
+  if (data.restored) {
+    UI.notify(`Welcome back, ${myName} — your catch and coins were restored.`);
+  } else if (data.persistBlocked) {
+    /* The save server could not be reached, so we refuse to overwrite whatever
+       is stored under this name. Better to warn than to silently wipe it. */
+    UI.notify('Save server unreachable — progress will not be kept this session.');
+  }
   clock.getDelta();
 }
 

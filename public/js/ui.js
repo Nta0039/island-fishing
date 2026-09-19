@@ -38,6 +38,8 @@ export const dom = {
   reelZone: $('reel-zone'),
   toasts: $('toasts'),
   nameInput: $('name-input'),
+  nameHistory: $('name-history'),
+  nameRecent: $('name-recent'),
   playBtn: $('play-btn'),
   startError: $('start-error'),
   colorPicker: $('color-picker'),
@@ -151,6 +153,88 @@ export function initColorPicker(colors, initial = 0) {
 
 export function getChosenColor() {
   return chosenColor;
+}
+
+/* ------------------------ Remembered names ------------------------ */
+
+const NAME_STORE = 'island-fishing.names';
+const NAME_LIMIT = 6;
+
+/** The names this device has played under, most recent first. */
+export function getNameHistory() {
+  try {
+    const raw = JSON.parse(localStorage.getItem(NAME_STORE) || '[]');
+    if (!Array.isArray(raw)) return [];
+    return raw
+      .filter((e) => e && typeof e.name === 'string' && e.name)
+      .slice(0, NAME_LIMIT);
+  } catch (_) {
+    return [];
+  }
+}
+
+function writeHistory(list) {
+  try { localStorage.setItem(NAME_STORE, JSON.stringify(list.slice(0, NAME_LIMIT))); } catch (_) { /* ignore */ }
+}
+
+/**
+ * Records a name as used, and notes whether the server had history for
+ * it so the chip can say so next time.
+ */
+export function rememberName(name, restored) {
+  const clean = String(name || '').trim();
+  if (!clean) return;
+  const list = getNameHistory().filter((e) => e.name.toLowerCase() !== clean.toLowerCase());
+  const prev = getNameHistory().find((e) => e.name.toLowerCase() === clean.toLowerCase());
+  list.unshift({
+    name: clean,
+    at: Date.now(),
+    plays: ((prev && prev.plays) || 0) + 1,
+    saved: !!(restored || (prev && prev.saved)),
+  });
+  writeHistory(list);
+  renderNameHistory();
+}
+
+/** Draws the chips and the autocomplete list. */
+export function renderNameHistory() {
+  const list = getNameHistory();
+  const chipRow = dom.nameRecent;
+  const dataList = dom.nameHistory;
+
+  if (dataList) {
+    dataList.innerHTML = list.map((e) => `<option value="${escapeHtml(e.name)}"></option>`).join('');
+  }
+  if (!chipRow) return;
+
+  chipRow.classList.toggle('hidden', list.length === 0);
+  chipRow.innerHTML = '';
+  for (const entry of list) {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'name-chip';
+    b.dataset.name = entry.name;
+    const sub = entry.saved ? '<span class="nc-sub">saved</span>' : '';
+    b.innerHTML = `${escapeHtml(entry.name)}${sub}`;
+    b.addEventListener('click', () => {
+      if (dom.nameInput) {
+        dom.nameInput.value = entry.name;
+        if (dom.nameInput.focus) dom.nameInput.focus();
+      }
+      for (const el of chipRow.querySelectorAll('.name-chip')) {
+        el.classList.toggle('sel', el.dataset.name === entry.name);
+      }
+      if (namePickHandler) namePickHandler(entry.name);
+    });
+    chipRow.appendChild(b);
+  }
+}
+
+let namePickHandler = null;
+
+/** Called when a returning player taps one of their old names. */
+export function onNamePicked(handler) {
+  namePickHandler = handler;
 }
 
 /** Flags the name field so a blank submission is obvious. */

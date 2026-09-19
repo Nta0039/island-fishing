@@ -4,6 +4,7 @@ const path = require('path');
 const http = require('http');
 const express = require('express');
 const { Server } = require('socket.io');
+const db = require('./db');
 
 const app = express();
 const server = http.createServer(app);
@@ -620,6 +621,43 @@ function saveSession(id, p) {
   }
 }
 
+/* ------------------------------------------------------------------ */
+/*  Persistent progress                                                */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Writes are batched: a player's progress is pushed to Supabase at most
+ * once every SAVE_DEBOUNCE_MS while they play, and once more the moment
+ * they leave. That keeps a busy island from hammering the API.
+ */
+const SAVE_DEBOUNCE_MS = 2500;
+
+function queueSave(p) {
+  /* persistBlocked means the login lookup failed, so we never learned what is
+     already stored. Writing now could replace a real history with a blank one. */
+  if (!db.enabled || !p || p.persistBlocked) return;
+  p.saveDirty = true;
+  if (p.saveTimer) return;
+  p.saveTimer = setTimeout(() => {
+    p.saveTimer = null;
+    if (!p.saveDirty) return;
+    p.saveDirty = false;
+    db.savePlayer(p).catch(() => {});
+  }, SAVE_DEBOUNCE_MS);
+}
+
+/** Flushes immediately, for when the player is about to disappear. */
+function saveNow(p) {
+  if (!db.enabled || !p || p.persistBlocked) return;
+  if (p.saveTimer) { clearTimeout(p.saveTimer); p.saveTimer = null; }
+  /* Nothing has changed since the last successful write — a disconnect on its
+     own is not a reason to hit the API, and writing anyway would let a player
+     who merely logged in restamp the row's display name. */
+  if (!p.saveDirty) return;
+  p.saveDirty = false;
+  db.savePlayer(p).catch(() => {});
+}
+
 io.on('connection', (socket) => {
   if (players.size >= MAX_PLAYERS) {
     socket.emit('serverFull', { max: MAX_PLAYERS });
@@ -629,7 +667,7 @@ io.on('connection', (socket) => {
 
   let joined = false;
 
-  socket.on('join', (data) => {
+  socket.on('join', async (data) => {
     if (joined) return;
     joined = true;
 
@@ -661,7 +699,35 @@ io.on('connection', (socket) => {
       discovered: resume ? { ...saved.discovered } : {},
       casts: resume ? (saved.casts || 0) : 0,
       rareCatches: resume ? (saved.rareCatches || 0) : 0,
+      saveTimer: null,
+      saveDirty: false,
     };
+
+    /* A live session is fresher than the database, so it wins. Otherwise
+       pull this name's stored progress in before the player spawns. */
+    let restored = false;
+    let loadFailed = false;
+    if (!resume && db.enabled) {
+      const res = await db.loadPlayer(p.name);
+      /* That lookup is a network round-trip, so the tab may have been closed
+         while it was in flight. Bailing here keeps an already-departed player
+         out of the roster — otherwise they linger as a ghost whose socket
+         never fires 'disconnect' again, quietly eating the player cap. */
+      if (!socket.connected) return;
+      if (res.ok) {
+        if (res.row && db.applyRow(p, res.row)) restored = true;
+      } else {
+        /* We could not tell a brand new name from an existing one, so this
+           session must never write: saving the fresh-start state would wipe
+           whatever is really stored under this name. */
+        loadFailed = true;
+        console.warn(`[db] ${p.name}: lookup failed (${res.error}) — this session will not be saved`);
+      }
+    }
+    p.restored = restored;          // progress came back from the database
+    p.resumed = resume;             // progress came back from this page's session
+    p.persistBlocked = loadFailed;  // never write over a history we could not read
+
     players.set(socket.id, p);
     if (sessionId) sessions.delete(sessionId);
 
@@ -678,6 +744,14 @@ io.on('connection', (socket) => {
       maxPlayers: MAX_PLAYERS,
       islandRadius: ISLAND_RADIUS,
       walkLimit: WALK_LIMIT,
+      /* True when we pulled this name's history back out of the database. */
+      restored: !!p.restored,
+      /* True when this page's own reconnect resumed an earlier session. */
+      resumed: !!p.resumed,
+      persistence: db.enabled,
+      /* Persistence is on, but the login lookup failed, so this session is
+         deliberately not being written — the client should say so. */
+      persistBlocked: !!p.persistBlocked,
     });
 
     socket.broadcast.emit('playerJoined', publicPlayer(p));
@@ -760,6 +834,10 @@ io.on('connection', (socket) => {
 
     io.emit('fishCaught', { id: p.id, name: p.name, fish, time: Date.now(), isNew });
     if (sock) sock.emit('playerData', privatePlayer(p));
+    /* A landed fish changes the cooler, the encyclopedia, the cast count and
+       possibly the rare tally — all four are progression, so it is written
+       back the same way a trade is. */
+    queueSave(p);
     resetFishing(p, true);
   }
 
@@ -838,6 +916,7 @@ io.on('connection', (socket) => {
     p.inventory[def.id] = (p.inventory[def.id] || 0) + 1;
     removeCollectible(item.id);
 
+    queueSave(p);
     socket.emit('playerData', privatePlayer(p));
     io.emit('collected', { id: p.id, name: p.name, item: def });
   });
@@ -864,6 +943,7 @@ io.on('connection', (socket) => {
     if (p.inventory[fish.id] <= 0) delete p.inventory[fish.id];
     p.coins += gain;
 
+    queueSave(p);
     socket.emit('playerData', privatePlayer(p));
     socket.emit('tradeResult', { ok: true, kind: 'sell', fish: fish.name, qty, gain });
   });
@@ -885,6 +965,7 @@ io.on('connection', (socket) => {
     p.inventory = {};
     p.coins += gain;
 
+    queueSave(p);
     socket.emit('playerData', privatePlayer(p));
     socket.emit('tradeResult', { ok: true, kind: 'sellAll', qty, gain });
   });
@@ -907,6 +988,7 @@ io.on('connection', (socket) => {
     p.owned.push(item.id);
     p.equipped[item.slot] = item.id;
 
+    queueSave(p);
     socket.emit('playerData', privatePlayer(p));
     socket.emit('tradeResult', { ok: true, kind: 'buy', item: item.name });
     io.emit('playerCosmetics', { id: p.id, equipped: p.equipped });
@@ -921,6 +1003,7 @@ io.on('connection', (socket) => {
 
     p.equipped[item.slot] = item.id;
 
+    queueSave(p);
     socket.emit('playerData', privatePlayer(p));
     socket.emit('tradeResult', { ok: true, kind: 'equip', item: item.name });
     io.emit('playerCosmetics', { id: p.id, equipped: p.equipped });
@@ -933,6 +1016,7 @@ io.on('connection', (socket) => {
     if (p) {
       clearTimer(p);
       saveSession(p.session, p);
+      saveNow(p);
       players.delete(socket.id);
     }
     io.emit('playerLeft', { id: socket.id });
@@ -943,6 +1027,44 @@ io.on('connection', (socket) => {
 
 /* Seed the beach with collectibles before anyone connects. */
 for (let i = 0; i < MAX_COLLECTIBLES; i++) spawnCollectible();
+
+/* ------------------------------------------------------------------ */
+/*  Durability safety net                                              */
+/* ------------------------------------------------------------------ */
+
+/**
+ * The debounced writes above only fire while the process is alive to run the
+ * timer. Two things can still swallow progress: a host that suspends or kills
+ * the process without a clean disconnect (Render does this on every deploy and
+ * whenever a free instance idles out), and a crash. So anything still dirty is
+ * swept up on a timer, and one last time on a shutdown signal.
+ */
+const AUTOSAVE_MS = 20000;
+
+const autosave = setInterval(() => {
+  if (!db.enabled) return;
+  for (const p of players.values()) {
+    if (p.saveDirty) saveNow(p);
+  }
+}, AUTOSAVE_MS);
+/* Never let the timer by itself keep the process awake. */
+if (autosave.unref) autosave.unref();
+
+let shuttingDown = false;
+
+function flushAll(reason) {
+  if (shuttingDown) return;
+  shuttingDown = true;
+  if (!db.enabled) return;
+  const dirty = [...players.values()].filter((p) => p.saveDirty);
+  if (!dirty.length) return;
+  console.log(`[db] flushing ${dirty.length} unsaved player(s) on ${reason}`);
+  /* Best effort: the process may be gone before these settle. */
+  Promise.all(dirty.map((p) => db.savePlayer(p))).catch(() => {});
+}
+
+process.on('SIGTERM', () => flushAll('SIGTERM'));
+process.on('SIGINT', () => flushAll('SIGINT'));
 
 server.listen(PORT, () => {
   console.log(`\n  🏝️  Island Fishing server running`);

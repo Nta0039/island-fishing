@@ -1135,6 +1135,43 @@ img.fish-icon {
   box-shadow: 0 30px 80px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.14);
 }
 
+/* ---- remembered names on this device ---- */
+.name-recent {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-top: 10px;
+  justify-content: center;
+}
+.name-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 13px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.09);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  color: #eaf6ff;
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.14s, transform 0.12s;
+}
+.name-chip:hover { background: rgba(255, 255, 255, 0.16); }
+.name-chip:active { transform: scale(0.96); }
+.name-chip.sel {
+  background: linear-gradient(180deg, #ffe680, #ffc21f);
+  border-color: transparent;
+  color: #062033;
+}
+.name-chip .nc-sub {
+  font-size: 10px;
+  font-weight: 600;
+  opacity: 0.6;
+}
+.name-chip.sel .nc-sub { opacity: 0.75; }
+
 /* ---- colour picker ---- */
 .pick-row { margin: 14px 0 16px; text-align: left; }
 .pick-label {

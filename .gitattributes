@@ -1,0 +1,19 @@
+# Normalise every text file to LF in the repository.
+#
+# Editing tools on Windows silently mix CRLF and LF into the same file — by
+# the time this was added, server.js had drifted to 484 CRLF lines alongside
+# 469 LF ones. Mixed endings make diffs unreadable, hide the real changes in
+# whitespace noise, and are the reason a "\n" search-and-replace can appear to
+# do nothing. Pinning the whole repo to LF keeps the working tree, the index
+# and the stored blob in agreement.
+* text=auto eol=lf
+
+# Binary assets must never be line-ending converted.
+*.png  binary
+*.jpg  binary
+*.jpeg binary
+*.gif  binary
+*.ico  binary
+*.mp3  binary
+*.woff binary
+*.woff2 binary
