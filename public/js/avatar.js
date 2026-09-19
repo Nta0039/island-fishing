@@ -8,6 +8,34 @@ const Y_AXIS = new THREE.Vector3(0, 1, 0);
 /* Length of the right-hand casting swing, in seconds. */
 const CAST_DURATION = 0.6;
 
+/* A small woven-carbon swatch, shared by every carbon-fiber rod. The blank
+   is drawn in white so this map reads at its own colours. */
+let carbonTexture = null;
+function getCarbonTexture() {
+  if (carbonTexture) return carbonTexture;
+  const c = document.createElement('canvas');
+  c.width = 32;
+  c.height = 32;
+  const ctx = c.getContext('2d');
+  ctx.fillStyle = '#2a2e32';
+  ctx.fillRect(0, 0, 32, 32);
+  for (let y = 0; y < 32; y += 4) {
+    for (let x = 0; x < 32; x += 4) {
+      const alt = (((x / 4) + (y / 4)) % 2) === 0;
+      ctx.fillStyle = alt ? '#3a3f45' : '#212428';
+      ctx.fillRect(x, y, 4, 4);
+      ctx.fillStyle = alt ? '#474d54' : '#2b2f34';
+      ctx.fillRect(x + 1, y + 1, 2, 2);
+    }
+  }
+  carbonTexture = new THREE.CanvasTexture(c);
+  carbonTexture.wrapS = THREE.RepeatWrapping;
+  carbonTexture.wrapT = THREE.RepeatWrapping;
+  carbonTexture.repeat.set(2, 6);
+  carbonTexture.anisotropy = 4;
+  return carbonTexture;
+}
+
 /* ---------------------------------------------------------------- */
 /*  Text / icon sprites                                              */
 /* ---------------------------------------------------------------- */
@@ -331,6 +359,42 @@ export function createAvatar(color, name, isLocal = false) {
   rodTip.position.y = 2.6;
   rod.add(rodTip);
 
+  /* --- carbon-fiber dressing, revealed only when the carbon rod is on.
+     A thicker EVA foregrip, metal reel-seat hoods, a denser guide set, a
+     rubber butt cap and a hook keeper all mark it out from the starter
+     rod even before the woven blank texture is applied. --- */
+  const carbonExtras = new THREE.Group();
+  carbonExtras.visible = false;
+  rod.add(carbonExtras);
+
+  const rubberMat = toonMaterial({ color: 0x17191c });
+  const seatMat = toonMaterial({ color: 0x6b7076 });
+  materials.push(rubberMat, seatMat);
+
+  const foregrip = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.05, 0.36, 16), rubberMat);
+  foregrip.position.y = 1.0;
+  carbonExtras.add(foregrip);
+
+  for (const hy of [0.47, 0.77]) {
+    const hood = new THREE.Mesh(new THREE.CylinderGeometry(0.048, 0.048, 0.09, 16), seatMat);
+    hood.position.y = hy;
+    carbonExtras.add(hood);
+  }
+
+  for (let i = 0; i < 4; i++) {
+    const guide = new THREE.Mesh(new THREE.TorusGeometry(0.03 + i * 0.004, 0.007, 6, 12), seatMat);
+    guide.position.set(0, 1.02 + i * 0.5, 0.035);
+    carbonExtras.add(guide);
+  }
+
+  const buttCap = new THREE.Mesh(new THREE.CylinderGeometry(0.052, 0.045, 0.08, 16), rubberMat);
+  buttCap.position.y = -0.02;
+  carbonExtras.add(buttCap);
+
+  const hookKeeper = new THREE.Mesh(new THREE.TorusGeometry(0.03, 0.006, 6, 12), seatMat);
+  hookKeeper.position.set(0, 0.86, 0.03);
+  carbonExtras.add(hookKeeper);
+
   /* Two resting places for the rod:
      - idle: carried upright in the LEFT hand while walking or standing.
      - held: in the RIGHT hand, ~180° in arm-space so the tip points
@@ -369,6 +433,7 @@ export function createAvatar(color, name, isLocal = false) {
     rock: 0,
     rodMat,
     rodTip,
+    carbonExtras,
     hookMark,
     phase: Math.random() * Math.PI * 2,
     flash: 0,
@@ -378,11 +443,23 @@ export function createAvatar(color, name, isLocal = false) {
   return group;
 }
 
-/** Apply a merchant rod cosmetic (colour + optional glow). */
+/** Apply a merchant rod cosmetic (colour, weave and optional glow). */
 export function applyRod(avatar, rod) {
   const u = avatar && avatar.userData;
   if (!u || !u.rodMat || !rod) return;
-  u.rodMat.color.set(rod.color);
+  const carbon = rod.style === 'carbon';
+  const wantMap = carbon ? getCarbonTexture() : null;
+  if (carbon) {
+    /* White base so the woven map supplies the dark-grey colour itself. */
+    u.rodMat.color.setHex(0xffffff);
+  } else {
+    u.rodMat.color.set(rod.color);
+  }
+  if (u.rodMat.map !== wantMap) {
+    u.rodMat.map = wantMap;
+    u.rodMat.needsUpdate = true;
+  }
+  if (u.carbonExtras) u.carbonExtras.visible = carbon;
   if (rod.emissive) {
     u.rodMat.emissive.set(rod.color);
     u.rodMat.emissiveIntensity = 0.9;

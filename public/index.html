@@ -134,20 +134,26 @@
     </div>
   </div>
 
-  <!-- Merchant trading panel -->
+  <!-- Merchant trading panel: live 3D preview left, item list right -->
   <div id="trade-panel" class="hidden">
     <div class="trade-card">
-      <div class="trade-head">
-        <div class="trade-title">🧙 David</div>
-        <div class="trade-coins">🪙 <span id="trade-coins">0</span></div>
-        <button id="trade-close" aria-label="Close">✕</button>
+      <div class="trade-preview">
+        <canvas id="shop-preview"></canvas>
+        <div class="trade-preview-label" id="trade-preview-label">Your angler</div>
       </div>
-      <div class="trade-tabs">
-        <button class="trade-tab active" data-tab="sell">Sell Fish</button>
-        <button class="trade-tab" data-tab="shop">Shop</button>
+      <div class="trade-main">
+        <div class="trade-head">
+          <div class="trade-title">🧙 David</div>
+          <div class="trade-coins">🪙 <span id="trade-coins">0</span></div>
+          <button id="trade-close" aria-label="Close">✕</button>
+        </div>
+        <div class="trade-tabs">
+          <button class="trade-tab active" data-tab="sell">Sell Fish</button>
+          <button class="trade-tab" data-tab="shop">Shop</button>
+        </div>
+        <div id="trade-body" class="trade-body"></div>
+        <div id="trade-msg" class="trade-msg"></div>
       </div>
-      <div id="trade-body" class="trade-body"></div>
-      <div id="trade-msg" class="trade-msg"></div>
     </div>
   </div>
 

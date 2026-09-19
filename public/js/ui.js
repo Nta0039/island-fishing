@@ -107,6 +107,7 @@ const ITEM_ART = {
   coconut: '/img/items/coconut.png',
   starfish: '/img/items/starfish.png',
   conch: '/img/items/conch.png',
+  seashell: '/img/items/seashell.png',
 };
 
 function iconHtml(fish, cls = 'fish-icon') {
@@ -505,6 +506,7 @@ export function positionMinigame(screen, indicator, targetStart, targetWidth, pr
 
 let tradeState = null;
 let tradeActionHandler = null;
+let tradePreviewHandler = null;
 let tradeMsgTimer = null;
 
 export function onTradeClose(handler) {
@@ -513,6 +515,11 @@ export function onTradeClose(handler) {
 
 export function onTradeAction(handler) {
   tradeActionHandler = handler;
+}
+
+/** Fires when a shop row is clicked, so the 3D preview can be updated. */
+export function onTradePreview(handler) {
+  tradePreviewHandler = handler;
 }
 
 export function showTradePanel(on) {
@@ -590,7 +597,7 @@ function renderShop(state) {
       const equipped = state.equipped[item.slot] === item.id;
       const cls = equipped ? 'trade-row equipped' : owned ? 'trade-row owned' : 'trade-row';
       html += `
-        <div class="${cls}">
+        <div class="${cls}" data-item="${item.id}" data-slot="${item.slot}">
           <span class="sw" style="${swatchStyle(item)}"></span>
           <span class="info">
             <span class="nm">${escapeHtml(item.name)}</span>
@@ -624,22 +631,31 @@ dom.tradeTabs.forEach((tab) => {
 
 dom.tradeBody.addEventListener('click', (e) => {
   const btn = e.target.closest('[data-action]');
-  if (!btn || btn.disabled) return;
-  const action = btn.dataset.action;
-  if (action === 'sellall') {
-    if (tradeActionHandler) tradeActionHandler({ type: 'sellAll' });
-  } else if (action === 'sell') {
-    if (tradeActionHandler) {
-      tradeActionHandler({
-        type: 'sell',
-        fishId: btn.dataset.fish,
-        qty: Number(btn.dataset.qty) || 1,
-      });
+  if (btn) {
+    if (btn.disabled) return;
+    const action = btn.dataset.action;
+    if (action === 'sellall') {
+      if (tradeActionHandler) tradeActionHandler({ type: 'sellAll' });
+    } else if (action === 'sell') {
+      if (tradeActionHandler) {
+        tradeActionHandler({
+          type: 'sell',
+          fishId: btn.dataset.fish,
+          qty: Number(btn.dataset.qty) || 1,
+        });
+      }
+    } else if (action === 'buy') {
+      if (tradeActionHandler) tradeActionHandler({ type: 'buy', itemId: btn.dataset.item });
+    } else if (action === 'equip') {
+      if (tradeActionHandler) tradeActionHandler({ type: 'equip', itemId: btn.dataset.item });
     }
-  } else if (action === 'buy') {
-    if (tradeActionHandler) tradeActionHandler({ type: 'buy', itemId: btn.dataset.item });
-  } else if (action === 'equip') {
-    if (tradeActionHandler) tradeActionHandler({ type: 'equip', itemId: btn.dataset.item });
+    return;
+  }
+
+  /* A click anywhere else on a shop row previews that item on the model. */
+  const row = e.target.closest('.trade-row[data-item]');
+  if (row && tradePreviewHandler) {
+    tradePreviewHandler({ itemId: row.dataset.item, slot: row.dataset.slot });
   }
 });
 

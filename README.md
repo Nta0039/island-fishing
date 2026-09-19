@@ -15,8 +15,9 @@ the same time.
   fifth cast.
 - **Full fishing loop** — cast, wait for the bite, then hold to reel a minigame
   indicator inside the target zone. Harder fish need the line held longer.
-- **Merchant "David"** — sell your catch, buy 7 rods and 6 bobbers, all of which
-  change how your character looks.
+- **Merchant "David"** — sell your catch, buy 8 rods and 6 bobbers, all of which
+  change how your character looks. The shop shows a live 3D preview of your angler,
+  and clicking an item tries it on before you buy.
 - **Fish Encyclopedia** — a gallery that silhouettes every species until you land one.
 - **Walkable island** — sandy beaches all the way round, a winding trail, a loop path
   around the central green, and a pier with a sunshade platform and moored speedboats.
@@ -195,6 +196,7 @@ public/
     ships.js           Distant shipping
     aircraft.js        Planes overhead
     fishing.js         Cast and reeling minigame
+    shopPreview.js     Live 3D try-on model shown beside the shop
     input.js           Keyboard, mouse and touch
     ui.js              DOM wiring
     toon.js            Toon shading helpers

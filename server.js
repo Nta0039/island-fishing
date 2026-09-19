@@ -132,6 +132,9 @@ const RODS = [
   { id: 'rod_violet',  slot: 'rod', name: 'Violet Rod',   price: 220, color: '#8e44ad', desc: 'Merchant favourite.' },
   { id: 'rod_gold',    slot: 'rod', name: 'Golden Rod',   price: 380, color: '#e8b923', desc: 'Polished to a shine.' },
   { id: 'rod_neon',    slot: 'rod', name: 'Neon Rod',     price: 650, color: '#39ff14', desc: 'Glows in the dark.', emissive: true },
+  /* `bite` scales the wait before a fish bites: 0.7 means 30% faster than
+     the starter rod. `style: 'carbon'` gives it its own 3D model. */
+  { id: 'rod_carbon',  slot: 'rod', name: 'Carbon Fiber Rod', price: 1000, color: '#33383d', desc: 'Feather-light weave — fish bite 30% sooner.', style: 'carbon', bite: 0.7 },
 ];
 
 const BOBBERS = [
@@ -526,6 +529,17 @@ function findCosmetic(id) {
   return COSMETICS.find((c) => c.id === id) || null;
 }
 
+/**
+ * Milliseconds until the next bite. The base wait is 5–10s; a rod whose
+ * `bite` factor is below 1 shortens it (the carbon rod is 0.7, so fish
+ * bite 30% sooner than with the starter rod).
+ */
+function biteDelay(p) {
+  const rod = findCosmetic(p && p.equipped && p.equipped.rod);
+  const mod = rod && Number(rod.bite) > 0 ? Number(rod.bite) : 1;
+  return rand(5000, 10000) * mod;
+}
+
 /* A "catch" is either a fish or a beach collectible. */
 function findCatch(id) {
   return (
@@ -845,7 +859,7 @@ io.on('connection', (socket) => {
         io.emit('fishEscaped', { id: q.id, name: q.name, fish: q.fish, reason: 'timeout' });
         resetFishing(q, true);
       }, BITE_WINDOW * 1000);
-    }, rand(5000, 10000));
+    }, biteDelay(p));
   });
 
   socket.on('startMinigame', () => {

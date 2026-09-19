@@ -30,6 +30,7 @@ import { createMarineLife } from './marinelife.js';
 import { createReef } from './reef.js';
 import * as Music from './music.js';
 import * as Qr from './qr.js';
+import { createShopPreview } from './shopPreview.js';
 import * as UI from './ui.js';
 
 /* ------------------------------------------------------------------ */
@@ -310,6 +311,7 @@ const players = new Map(); // id -> remote player
 let socket = null;
 let myId = null;
 let myName = '';
+let myColor = '#4dabf7';
 let joined = false;
 let connecting = false;
 let sendAcc = 0;
@@ -451,6 +453,7 @@ function connect(name, color) {
 
 function onInit(data) {
   myId = data.id;
+  myColor = data.you.color || myColor;
   joined = true;
   connecting = false;
 
@@ -766,6 +769,22 @@ function refreshTrade() {
   });
 }
 
+let shopPreview = null;
+
+function ensureShopPreview() {
+  if (!shopPreview) shopPreview = createShopPreview();
+  return shopPreview;
+}
+
+/** Points the preview at the player's currently equipped gear. */
+function previewEquipped() {
+  const pv = shopPreview;
+  if (!pv) return;
+  pv.setColor(myColor);
+  pv.showRod(cosmeticById.get(playerData.equipped.rod));
+  pv.showBobber(cosmeticById.get(playerData.equipped.bobber));
+}
+
 function openTrade() {
   if (tradeOpen) return;
   UI.showCodex(false);
@@ -774,6 +793,12 @@ function openTrade() {
   tradeOpen = true;
   UI.showTradePanel(true);
   refreshTrade();
+  const pv = ensureShopPreview();
+  if (pv) {
+    previewEquipped();
+    /* The panel must be visible before the canvas has a size to measure. */
+    pv.resize();
+  }
   UI.setTradeMessage('');
 }
 
@@ -945,6 +970,15 @@ UI.onTradeAction((a) => {
   else if (a.type === 'sell') socket.emit('sellFish', { fishId: a.fishId, qty: a.qty });
   else if (a.type === 'buy') socket.emit('buyItem', { itemId: a.itemId });
   else if (a.type === 'equip') socket.emit('equipItem', { itemId: a.itemId });
+});
+
+/* Clicking a shop row swaps that item onto the preview model before buying. */
+UI.onTradePreview(({ itemId }) => {
+  const item = cosmeticById.get(itemId);
+  const pv = shopPreview;
+  if (!item || !pv) return;
+  if (item.slot === 'bobber') pv.showBobber(item);
+  else pv.showRod(item);
 });
 
 /* Esc pauses the game. While the mouse is captured the browser swallows the
@@ -1321,6 +1355,7 @@ window.addEventListener('resize', () => {
   renderer.setSize(window.innerWidth, window.innerHeight);
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
   postfx.setSize(window.innerWidth, window.innerHeight);
+  if (shopPreview) shopPreview.resize();
 });
 
 /* ------------------------------------------------------------------ */
@@ -1640,6 +1675,9 @@ function animate() {
 
   /* ---------- Toon shading + pencil-sketch edge pass ---------- */
   postfx.render(dt);
+
+  /* The shop's live 3D preview has its own canvas and only draws while open. */
+  if (tradeOpen && shopPreview) shopPreview.render(dt);
 }
 
 let hintAcc = 0;

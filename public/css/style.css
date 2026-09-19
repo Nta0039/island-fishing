@@ -613,15 +613,66 @@ body.touch .ch-touch { display: block; }
   backdrop-filter: blur(4px);
 }
 .trade-card {
-  width: min(94vw, 480px);
+  width: min(94vw, 880px);
+  min-height: min(520px, 86vh);
   max-height: 86vh;
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   background: rgba(10, 24, 40, 0.97);
   border: 1px solid var(--ui-border);
   border-radius: 18px;
   box-shadow: 0 30px 80px rgba(0, 0, 0, 0.65);
   overflow: hidden;
+}
+
+/* ---------------- Live 3D shop preview (left) ---------------- */
+.trade-preview {
+  position: relative;
+  flex: 0 0 300px;
+  display: flex;
+  flex-direction: column;
+  background:
+    radial-gradient(120% 78% at 50% 16%, rgba(87, 199, 255, 0.22), transparent 62%),
+    linear-gradient(180deg, #0e2740, #071626);
+  border-right: 1px solid var(--ui-border);
+}
+#shop-preview {
+  display: block;
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  touch-action: none;
+}
+.trade-preview-label {
+  padding: 9px 12px;
+  text-align: center;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.3px;
+  color: #cfe9ff;
+  background: rgba(4, 12, 22, 0.55);
+  border-top: 1px solid var(--ui-border);
+}
+
+/* ---------------- Shop list (right) ---------------- */
+.trade-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+@media (max-width: 720px) {
+  .trade-card {
+    flex-direction: column;
+    width: min(94vw, 480px);
+    min-height: 0;
+  }
+  .trade-preview {
+    flex: 0 0 168px;
+    border-right: none;
+    border-bottom: 1px solid var(--ui-border);
+  }
 }
 .trade-head {
   display: flex;
@@ -720,6 +771,10 @@ body.touch .ch-touch { display: block; }
 .trade-row .cnt { font-weight: 800; font-size: 13px; color: #9fe0ff; }
 .trade-row.owned { background: rgba(126, 240, 176, 0.08); }
 .trade-row.equipped { background: rgba(255, 214, 10, 0.1); border: 1px solid rgba(255, 214, 10, 0.35); }
+
+/* Shop rows are clickable: clicking one previews it on the 3D model. */
+.trade-row[data-item] { cursor: pointer; transition: background 0.12s; }
+.trade-row[data-item]:hover { background: rgba(87, 199, 255, 0.16); }
 
 .trade-btn-s {
   padding: 7px 12px;
