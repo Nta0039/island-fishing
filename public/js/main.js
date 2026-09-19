@@ -478,6 +478,7 @@ function onInit(data) {
     carrying: data.you.carrying || 0,
     capacity: data.you.capacity || data.inventoryCap || 50,
   };
+  UI.setCoins(playerData.coins);
 
   local.x = data.you.x;
   local.z = data.you.z;
@@ -735,6 +736,7 @@ function onPlayerData(d) {
     capacity: d.capacity || playerData.capacity || 50,
   };
   applyCosmetics(local.group, playerData.equipped, true);
+  UI.setCoins(playerData.coins);
   if (tradeOpen) refreshTrade();
   if (UI.isInventoryOpen()) refreshInventory();
 }

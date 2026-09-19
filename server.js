@@ -101,6 +101,9 @@ const STRUGGLE_CHANCE = 0.25;
 const STRUGGLE_WINDOW = 6;
 const STRUGGLE_NEED = 3.0;
 
+/* A brand-new angler is guaranteed exactly one gull within this many catches. */
+const BEGINNER_CATCHES = 3;
+
 /* Coins earned per fish sold to the merchant. */
 const RARITY_VALUE = { common: 6, medium: 15, high: 40, rare: 120 };
 
@@ -203,6 +206,23 @@ function rollFishFor(p) {
     if (rares.length) return rares[Math.floor(Math.random() * rares.length)];
   }
   return rollFish();
+}
+
+/**
+ * Whether a gull should dive on the catch the player is reeling in.
+ *
+ * A brand-new angler is guaranteed exactly one tug-of-war inside their first
+ * few catches: random gulls are suppressed until the reel that would land
+ * their third fish, where one is forced. Once it has happened (win or lose)
+ * the flag sticks, so it never repeats — and everyone past that point, and
+ * anyone who has already met the gull, just gets the usual random chance.
+ */
+function wantsStruggle(p) {
+  const catches = p.casts || 0;
+  if (!p.gullSeen && catches < BEGINNER_CATCHES) {
+    return catches === BEGINNER_CATCHES - 1;
+  }
+  return Math.random() < STRUGGLE_CHANCE;
 }
 
 function safeName(n) {
@@ -647,6 +667,7 @@ function saveSession(id, p) {
     discovered: { ...p.discovered },
     casts: p.casts || 0,
     rareCatches: p.rareCatches || 0,
+    gullSeen: !!p.gullSeen,
   });
   for (const [key, s] of sessions) {
     if (Date.now() - s.at > SESSION_TTL_MS) sessions.delete(key);
@@ -744,6 +765,7 @@ io.on('connection', (socket) => {
       discovered: resume ? { ...saved.discovered } : {},
       casts: resume ? (saved.casts || 0) : 0,
       rareCatches: resume ? (saved.rareCatches || 0) : 0,
+      gullSeen: resume ? !!saved.gullSeen : false,
       saveTimer: null,
       saveDirty: false,
     };
@@ -918,8 +940,15 @@ io.on('connection', (socket) => {
     if (!p || !p.fish) return;
     const fish = p.fish;
 
-    /* Every so often a gull dives in and tries to make off with it. */
-    if (Math.random() < STRUGGLE_CHANCE) {
+    /* Every so often a gull dives in and tries to make off with it — and a
+       new angler is guaranteed one within their first few catches. */
+    if (wantsStruggle(p)) {
+      /* Mark the beginner encounter as spent so it cannot repeat, even if
+         the gull wins this time. */
+      if (!p.gullSeen) {
+        p.gullSeen = true;
+        queueSave(p);
+      }
       p.fishing = 'struggle';
       p.struggle = { fish, got: 0 };
       io.emit('fishingState', {

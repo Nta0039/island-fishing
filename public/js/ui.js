@@ -9,6 +9,7 @@ export const dom = {
   brand: $('brand'),
   onlineCount: $('online-count'),
   onlineMax: $('online-max'),
+  hudCoins: $('hud-coins'),
   catchlogList: $('catchlog-list'),
   hint: $('hint'),
   fishingBtn: null,
@@ -116,6 +117,9 @@ function iconHtml(fish, cls = 'fish-icon') {
   if (!url) return `<span class="${cls} emoji">${emoji}</span>`;
   return `<img class="${cls}" src="${url}" alt="" draggable="false" data-emoji="${emoji}">`;
 }
+
+/** Inline coin glyph, used wherever a price or balance is shown. */
+const COIN = '<img class="coin-icon" src="/img/ui/coin.png" alt="" draggable="false" />';
 
 /* Swap any fish icon that fails to load for its emoji. */
 document.addEventListener('error', (e) => {
@@ -316,6 +320,11 @@ export function fadeStartScreen(on) {
 export function setOnline(count, max) {
   dom.onlineCount.textContent = count;
   if (max) dom.onlineMax.textContent = max;
+}
+
+/** Keeps the top-bar coin purse in step with the player's balance. */
+export function setCoins(coins) {
+  if (dom.hudCoins) dom.hudCoins.textContent = String(coins);
 }
 
 export function setHint(text) {
@@ -554,7 +563,7 @@ function itemButton(item, state) {
     return `<button class="trade-btn-s ghost" data-action="equip" data-item="${item.id}">Equip</button>`;
   }
   const afford = state.coins >= item.price;
-  return `<button class="trade-btn-s gold" data-action="buy" data-item="${item.id}" ${afford ? '' : 'disabled'}>🪙 ${item.price}</button>`;
+  return `<button class="trade-btn-s gold" data-action="buy" data-item="${item.id}" ${afford ? '' : 'disabled'}>${COIN} ${item.price}</button>`;
 }
 
 function renderSell(state) {
@@ -570,7 +579,7 @@ function renderSell(state) {
   const order = { rare: 0, high: 1, medium: 2, common: 3 };
   entries.sort((a, b) => order[a.fish.rarity] - order[b.fish.rarity] || a.fish.name.localeCompare(b.fish.name));
 
-  let html = `<button class="trade-sellall" data-action="sellall">Sell Everything · 🪙 ${total}</button>`;
+  let html = `<button class="trade-sellall" data-action="sellall">Sell Everything · ${COIN} ${total}</button>`;
 
   for (const e of entries) {
     const unit = state.rarityValue[e.fish.rarity];
@@ -579,7 +588,7 @@ function renderSell(state) {
         ${iconHtml(e.fish)}
         <span class="info">
           <span class="nm">${escapeHtml(e.fish.name)}</span>
-          <span class="sub">${RARITY_LABEL[e.fish.rarity]} · 🪙 ${unit} each</span>
+          <span class="sub">${RARITY_LABEL[e.fish.rarity]} · ${COIN} ${unit} each</span>
         </span>
         <span class="cnt">×${e.count}</span>
         <button class="trade-btn-s ghost" data-action="sell" data-fish="${e.fish.id}" data-qty="1">Sell 1</button>
@@ -750,7 +759,7 @@ export function showCatchCard(fish, opts = {}) {
     `<div class="cc-name">${escapeHtml(fish.name)}</div>` +
     `<div class="cc-meta">` +
       `<span class="cc-rarity">${fish.rarity}</span>` +
-      (opts.value ? `<span class="cc-value">🪙 ${opts.value}</span>` : '') +
+      (opts.value ? `<span class="cc-value">${COIN} ${opts.value}</span>` : '') +
     `</div>`;
 
   /* Force a reflow so the pop animation replays on a repeat catch. */

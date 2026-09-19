@@ -176,6 +176,8 @@ async function savePlayer(p) {
     equipped: toChoiceMap(p.equipped) || {},
     casts: toCount(p.casts),
     rare_catches: toCount(p.rareCatches),
+    /* Whether the beginner seagull script has already fired. */
+    gull_seen: !!p.gullSeen,
   };
 
   try {
@@ -205,6 +207,7 @@ function applyRow(p, row) {
   p.discovered = toFlagMap(row.discovered);
   p.casts = toCount(row.casts);
   p.rareCatches = toCount(row.rare_catches);
+  p.gullSeen = !!row.gull_seen;
 
   /* A player must never be left with no rod, so an empty or missing owned
      list falls back to whatever the fresh spawn already had. */

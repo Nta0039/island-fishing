@@ -111,6 +111,34 @@ button, input, textarea, select, a, label,
 }
 #topbar-right > * { pointer-events: auto; }
 
+/* Player purse, shown beside the online count. */
+#coin-hud {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  border-radius: 999px;
+  background: rgba(255, 214, 10, 0.13);
+  border: 1px solid rgba(255, 214, 10, 0.3);
+  color: #ffe79a;
+  font-weight: 800;
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+}
+#coin-hud .coin-icon { width: 18px; height: 18px; }
+
+/* Inline coin glyph, sized to the text it sits beside. */
+img.coin-icon {
+  width: 1.05em;
+  height: 1.05em;
+  display: inline-block;
+  vertical-align: -0.18em;
+  object-fit: contain;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.4));
+  -webkit-user-drag: none;
+  user-select: none;
+}
+
 #codex-btn {
   display: flex;
   align-items: center;
@@ -1391,6 +1419,8 @@ img.fish-icon {
   #brand { padding: 5px 10px; }
   #brand .brand-art { height: 20px; }
   #stats { font-size: 11.5px; padding: 7px 11px; }
+  #coin-hud { font-size: 12px; padding: 6px 10px; }
+  #coin-hud .coin-icon { width: 15px; height: 15px; }
   #fishing-btn { padding: 12px 26px; font-size: 15px; bottom: 26px; }
   #mg-bar { width: 62vw; height: 20px; }
   .panel h1 { font-size: 28px; }

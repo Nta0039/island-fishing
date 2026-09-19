@@ -98,6 +98,7 @@ create table if not exists public.players (
   equipped     jsonb   not null default '{}'::jsonb,
   casts        integer not null default 0,
   rare_catches integer not null default 0,
+  gull_seen    boolean not null default false,
   created_at   timestamptz not null default now(),
   updated_at   timestamptz not null default now()
 );
@@ -150,6 +151,7 @@ Everything that counts as progress is written back under the player's name:
 | `coins` | current balance |
 | `owned` / `equipped` | rods, bobbers and which ones are in use |
 | `casts` / `rare_catches` | lifetime totals |
+| `gull_seen` | whether the beginner seagull tug-of-war has already fired |
 
 Writes are batched rather than fired on every action, so a busy island does not hammer
 the API:
