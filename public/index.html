@@ -22,18 +22,21 @@
 <!-- ============ In-game HUD ============ -->
 <div id="hud" class="hidden">
   <div id="topbar">
-    <div id="brand"><img class="brand-art" src="/img/title.png" alt="Island Fishing" /></div>
+    <div id="topbar-left">
+      <div id="brand"><img class="brand-art" src="/img/title.png" alt="Island Fishing" /></div>
+      <button id="lang-btn" title="Language" data-i18n-title="hud.lang" aria-label="Language"><span class="lang-en">EN</span><span class="lang-sep">/</span><span class="lang-zh">中文</span></button>
+    </div>
     <div id="topbar-right">
-      <div id="coin-hud" title="Coins"><img class="coin-icon" src="/img/ui/coin.png" alt="" draggable="false" data-emoji="🪙" /><span id="hud-coins">0</span></div>
-      <div id="stats"><span id="online-count">0</span><span class="sep">/</span><span id="online-max">10</span> online</div>
-      <button id="music-btn" title="Background music"><span class="music-icon">🔊</span></button>
-      <button id="codex-btn" title="Fish Encyclopedia"><span class="codex-icon">📖</span><span class="codex-label">Encyclopedia</span></button>
-      <button id="inventory-btn" title="Inventory"><span class="inv-icon">🎒</span><span class="inv-label">Inventory</span></button>
+      <div id="coin-hud" title="Coins" data-i18n-title="hud.coins"><img class="coin-icon" src="/img/ui/coin.png" alt="" draggable="false" data-emoji="🪙" /><span id="hud-coins">0</span></div>
+      <div id="stats"><span id="online-count">0</span><span class="sep">/</span><span id="online-max">10</span> <span data-i18n="hud.online">online</span></div>
+      <button id="music-btn" title="Background music" data-i18n-title="hud.music"><span class="music-icon">🔊</span></button>
+      <button id="codex-btn" title="Fish Encyclopedia" data-i18n-title="hud.encyclopedia"><span class="codex-icon">📖</span><span class="codex-label" data-i18n="hud.encyclopedia">Encyclopedia</span></button>
+      <button id="inventory-btn" title="Inventory" data-i18n-title="hud.inventory"><span class="inv-icon">🎒</span><span class="inv-label" data-i18n="hud.inventory">Inventory</span></button>
     </div>
   </div>
 
   <div id="catchlog">
-    <div class="log-title">Catch Feed</div>
+    <div class="log-title" data-i18n="hud.catchFeed">Catch Feed</div>
     <ul id="catchlog-list"></ul>
   </div>
 
@@ -42,21 +45,21 @@
     <section class="info-card" data-card="controls">
       <button class="info-head" type="button" aria-expanded="true">
         <span class="info-tri">▾</span>
-        <span class="info-title">Controls</span>
+        <span class="info-title" data-i18n="controls.title">Controls</span>
       </button>
       <div class="info-body">
         <ul class="ch-pc">
-          <li><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> or <kbd>↑</kbd><kbd>←</kbd><kbd>↓</kbd><kbd>→</kbd> move · hold <kbd>Shift</kbd> to sprint</li>
-          <li><b>Click</b> the view to capture the mouse, then just move it to look <span class="ch-dim">(<b>Esc</b> releases)</span></li>
-          <li><kbd>F</kbd> cast or reel in · <kbd>E</kbd> interact</li>
-          <li><b>Space</b> hold to reel in</li>
-          <li><b>Esc</b> closes a panel or steps back</li>
+          <li data-i18n-html="controls.moveHtml"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> or <kbd>↑</kbd><kbd>←</kbd><kbd>↓</kbd><kbd>→</kbd> move · hold <kbd>Shift</kbd> to sprint</li>
+          <li data-i18n-html="controls.captureHtml"><b>Click</b> the view to capture the mouse, then just move it to look <span class="ch-dim">(<b>Esc</b> releases)</span></li>
+          <li data-i18n-html="controls.feHtml"><kbd>F</kbd> cast or reel in · <kbd>E</kbd> interact</li>
+          <li data-i18n-html="controls.spaceHtml"><b>Space</b> hold to reel in</li>
+          <li data-i18n-html="controls.escHtml"><b>Esc</b> closes a panel or steps back</li>
         </ul>
         <ul class="ch-touch">
-          <li><b>Joystick</b> (bottom-left) to move</li>
-          <li><b>Drag</b> the view to look around</li>
-          <li><b>Hold</b> bottom-right to reel in</li>
-          <li><b>Tap</b> the on-screen buttons to act</li>
+          <li data-i18n-html="controls.touchMoveHtml"><b>Joystick</b> (bottom-left) to move</li>
+          <li data-i18n-html="controls.touchLookHtml"><b>Drag</b> the view to look around</li>
+          <li data-i18n-html="controls.touchReelHtml"><b>Hold</b> bottom-right to reel in</li>
+          <li data-i18n-html="controls.touchActHtml"><b>Tap</b> the on-screen buttons to act</li>
         </ul>
       </div>
     </section>
@@ -65,12 +68,12 @@
     <section class="info-card" id="qr-card" data-card="qr">
       <button class="info-head" type="button" aria-expanded="true">
         <span class="info-tri">▾</span>
-        <span class="info-title">Join on your phone</span>
+        <span class="info-title" data-i18n="qr.title">Join on your phone</span>
       </button>
       <div class="info-body">
         <canvas id="qr-canvas" width="168" height="168"></canvas>
         <div class="qr-url" id="qr-url"></div>
-        <div class="qr-hint">Point your camera at the code</div>
+        <div class="qr-hint" data-i18n="qr.hint">Point your camera at the code</div>
       </div>
     </section>
   </div>
@@ -101,15 +104,15 @@
 
   <!-- Mobile reel area (bottom-right) -->
   <div id="reel-zone" class="touch-only hidden">
-    <div id="reel-btn">HOLD<br>TO REEL</div>
+    <div id="reel-btn" data-i18n-html="reel.btnHtml">HOLD<br>TO REEL</div>
   </div>
 
   <!-- Mobile seagull fight-back button (bottom-right) -->
-  <button id="struggle-btn" class="touch-only hidden" aria-label="Fight the seagull">TAP!<br>FIGHT BACK</button>
+  <button id="struggle-btn" class="touch-only hidden" aria-label="Fight the seagull" data-i18n-html="sg.fightHtml">TAP!<br>FIGHT BACK</button>
 
   <!-- Seagull tug-of-war, shown after a catch -->
   <div id="struggle" class="hidden">
-    <div class="sg-head"><span class="sg-bird">🕊️</span> A seagull is after your catch!</div>
+    <div class="sg-head"><span class="sg-bird">🕊️</span> <span data-i18n="sg.head">A seagull is after your catch!</span></div>
     <img class="sg-art" src="/img/seagull-struggle.png" alt="" draggable="false" data-emoji="🕊️" />
     <div id="sg-bar"><div id="sg-fill"></div></div>
     <div class="sg-foot">
@@ -127,8 +130,8 @@
   <div id="codex-panel" class="hidden">
     <div class="codex-card">
       <div class="codex-head">
-        <div class="codex-title">📖 Fish Encyclopedia</div>
-        <div class="codex-progress"><span id="codex-count">0</span> / <span id="codex-total">20</span> discovered</div>
+        <div class="codex-title" data-i18n-html="codex.titleHtml">📖 Fish Encyclopedia</div>
+        <div class="codex-progress"><span id="codex-count">0</span> / <span id="codex-total">20</span> <span data-i18n="codex.discovered">discovered</span></div>
         <button id="codex-close" aria-label="Close">✕</button>
       </div>
       <div id="codex-grid" class="codex-grid"></div>
@@ -140,7 +143,7 @@
     <div class="trade-card">
       <div class="trade-preview">
         <canvas id="shop-preview"></canvas>
-        <div class="trade-preview-label" id="trade-preview-label">Your angler</div>
+        <div class="trade-preview-label" id="trade-preview-label" data-i18n="trade.preview">Your angler</div>
       </div>
       <div class="trade-main">
         <div class="trade-head">
@@ -149,8 +152,8 @@
           <button id="trade-close" aria-label="Close">✕</button>
         </div>
         <div class="trade-tabs">
-          <button class="trade-tab active" data-tab="sell">Sell Fish</button>
-          <button class="trade-tab" data-tab="shop">Shop</button>
+          <button class="trade-tab active" data-tab="sell" data-i18n="trade.sellTab">Sell Fish</button>
+          <button class="trade-tab" data-tab="shop" data-i18n="trade.shopTab">Shop</button>
         </div>
         <div id="trade-body" class="trade-body"></div>
         <div id="trade-msg" class="trade-msg"></div>
@@ -162,23 +165,23 @@
   <div id="inventory-panel" class="hidden">
     <div class="inv-card">
       <div class="inv-head">
-        <div class="inv-title">🎒 Inventory</div>
+        <div class="inv-title" data-i18n-html="inv.titleHtml">🎒 Inventory</div>
         <div class="inv-coins"><img class="coin-icon" src="/img/ui/coin.png" alt="" draggable="false" data-emoji="🪙" /> <span id="inv-coins">0</span></div>
         <button id="inventory-close" aria-label="Close">✕</button>
       </div>
 
       <div class="inv-cap">
         <div class="inv-cap-row">
-          <span>Cooler space</span>
+          <span data-i18n="inv.cooler">Cooler space</span>
           <span><b id="inv-count">0</b> / <span id="inv-cap">50</span></span>
         </div>
         <div class="inv-bar"><div id="inv-bar-fill"></div></div>
       </div>
 
-      <div class="inv-section-title">Fish &amp; finds</div>
+      <div class="inv-section-title" data-i18n="inv.fishFinds">Fish &amp; finds</div>
       <div id="inv-grid" class="inv-grid"></div>
 
-      <div class="inv-section-title">Shop purchases</div>
+      <div class="inv-section-title" data-i18n="inv.purchases">Shop purchases</div>
       <div id="inv-gear" class="inv-gear"></div>
     </div>
   </div>
@@ -187,7 +190,7 @@
   <div id="pause-panel" class="hidden">
     <div class="pause-card">
       <div class="pause-head">
-        <div class="pause-title">⏸ Paused</div>
+        <div class="pause-title" data-i18n-html="pause.titleHtml">⏸ Paused</div>
         <button id="pause-close" aria-label="Close">✕</button>
       </div>
       <div class="pause-status" id="pause-status"></div>
@@ -195,21 +198,21 @@
         <button id="pause-save" class="pause-btn primary">
           <span class="pb-icon">💾</span>
           <span class="pb-text">
-            <b>Save Game Progress</b>
-            <small>Push your cooler, purse and gear to your account</small>
+            <b data-i18n="pause.save">Save Game Progress</b>
+            <small data-i18n="pause.saveSub">Push your cooler, purse and gear to your account</small>
           </span>
         </button>
         <button id="pause-save-exit" class="pause-btn">
           <span class="pb-icon">🚪</span>
           <span class="pb-text">
-            <b>Save Game Progress &amp; Return to Title</b>
-            <small>Save, then head back to the title screen</small>
+            <b data-i18n="pause.saveExit">Save Game Progress &amp; Return to Title</b>
+            <small data-i18n="pause.saveExitSub">Save, then head back to the title screen</small>
           </span>
         </button>
       </div>
       <div class="pause-foot">
-        <span class="pf-pc">Press <kbd>Esc</kbd> to resume</span>
-        <span class="pf-touch">Tap the logo any time to pause</span>
+        <span class="pf-pc" data-i18n-html="pause.resumePcHtml">Press <kbd>Esc</kbd> to resume</span>
+        <span class="pf-touch" data-i18n="pause.resumeTouch">Tap the logo any time to pause</span>
       </div>
     </div>
   </div>
@@ -219,26 +222,26 @@
 <div id="start-screen">
   <div class="panel">
     <img id="title-art" src="/img/title.png" alt="Island Fishing" />
-    <p class="sub">3D multiplayer fishing · up to 10 players</p>
-    <input id="name-input" maxlength="14" list="name-history" placeholder="Enter your name" autocomplete="off" spellcheck="false" />
+    <p class="sub" data-i18n="start.sub">3D multiplayer fishing · up to 10 players</p>
+    <input id="name-input" maxlength="14" list="name-history" placeholder="Enter your name" data-i18n-ph="start.namePlaceholder" autocomplete="off" spellcheck="false" />
     <datalist id="name-history"></datalist>
     <div id="name-recent" class="name-recent hidden"></div>
 
     <div class="pick-row">
-      <div class="pick-label">Outfit colour</div>
+      <div class="pick-label" data-i18n="start.outfit">Outfit colour</div>
       <div id="color-picker" class="color-picker"></div>
     </div>
 
-    <button id="play-btn">Play</button>
+    <button id="play-btn" data-i18n="start.play">Play</button>
     <div class="controls-help">
-      <p><b>PC</b> — WASD or arrows to move · hold <b>Shift</b> to sprint · drag mouse to look · hold <b>Space</b> to reel</p>
-      <p><b>Mobile / Tablet</b> — left joystick to move · drag to look · hold bottom-right to reel</p>
+      <p data-i18n-html="start.pcHelpHtml"><b>PC</b> — WASD or arrows to move · hold <b>Shift</b> to sprint · drag mouse to look · hold <b>Space</b> to reel</p>
+      <p data-i18n-html="start.mobileHelpHtml"><b>Mobile / Tablet</b> — left joystick to move · drag to look · hold bottom-right to reel</p>
     </div>
     <div id="start-error" class="error"></div>
   </div>
 </div>
 
-<div id="loading" class="hidden"><div class="spinner"></div><span>Connecting…</span></div>
+<div id="loading" class="hidden"><div class="spinner"></div><span data-i18n="loading.connecting">Connecting…</span></div>
 
 <script src="/socket.io/socket.io.js"></script>
 <!-- QR encoder, used only for the desktop "join on your phone" card. If it

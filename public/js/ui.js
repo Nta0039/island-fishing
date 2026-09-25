@@ -1,4 +1,8 @@
 import * as THREE from 'three';
+import {
+  t, catchName, catchDesc, cosmeticName, cosmeticDesc, rarityName,
+  getLocale, toggleLocale, onLocaleChange,
+} from './i18n.js';
 
 const $ = (id) => document.getElementById(id);
 
@@ -7,6 +11,7 @@ export const dom = {
   startScreen: $('start-screen'),
   loading: $('loading'),
   brand: $('brand'),
+  langBtn: $('lang-btn'),
   onlineCount: $('online-count'),
   onlineMax: $('online-max'),
   hudCoins: $('hud-coins'),
@@ -76,6 +81,26 @@ export const dom = {
   pauseSaveExit: $('pause-save-exit'),
   pauseClose: $('pause-close'),
 };
+
+/* ------------------------------------------------------------------ */
+/*  Language switch                                                    */
+/* ------------------------------------------------------------------ */
+
+/** Keeps the EN / 中文 pill showing which language is currently active. */
+export function syncLangButton() {
+  if (!dom.langBtn) return;
+  const zh = getLocale() === 'zh';
+  dom.langBtn.classList.toggle('zh', zh);
+  dom.langBtn.classList.toggle('en', !zh);
+}
+
+/** The top-left language toggle. The click handler flips the locale. */
+export function onLangClick(handler) {
+  if (dom.langBtn) dom.langBtn.addEventListener('click', handler);
+}
+
+onLocaleChange(syncLangButton);
+syncLangButton();
 
 /* ------------------------------------------------------------------ */
 /*  Fish icons                                                         */
@@ -174,7 +199,7 @@ export function initColorPicker(colors, initial = 0) {
     b.style.background = c;
     b.dataset.color = c;
     b.title = c;
-    b.setAttribute('aria-label', `Outfit colour ${i + 1}`);
+    b.setAttribute('aria-label', `${t('start.outfit')} ${i + 1}`);
     b.addEventListener('click', () => {
       chosenColor = c;
       for (const el of dom.colorPicker.querySelectorAll('.swatch')) {
@@ -285,7 +310,7 @@ export function onMusicClick(handler) {
 export function setMusicMuted(on) {
   if (!dom.musicBtn) return;
   dom.musicBtn.classList.toggle('muted', !!on);
-  dom.musicBtn.title = on ? 'Background music: off' : 'Background music: on';
+  dom.musicBtn.title = on ? t('hud.musicOff') : t('hud.musicOn');
   const icon = dom.musicBtn.querySelector('.music-icon');
   if (icon) icon.textContent = on ? '🔇' : '🔊';
 }
@@ -395,7 +420,7 @@ export function showStruggle(on, s) {
   if (dom.struggleBtn) dom.struggleBtn.classList.toggle('hidden', !on);
   if (on && dom.sgLabel) {
     const touch = document.body.classList.contains('touch');
-    dom.sgLabel.textContent = touch ? 'Tap the button to keep it!' : 'Mash Space to keep it!';
+    dom.sgLabel.textContent = touch ? t('sg.labelTouch') : t('sg.labelPc');
   }
   if (on && dom.sgTime && s) dom.sgTime.textContent = `${s.window}s`;
 }
@@ -494,7 +519,7 @@ export function showMinigame(on, isTouch) {
   dom.minigame.classList.toggle('hidden', !on);
   dom.reelZone.classList.toggle('hidden', !on);
   if (on) {
-    dom.mgLabel.textContent = isTouch ? 'Hold bottom-right!' : 'Hold SPACE!';
+    dom.mgLabel.textContent = isTouch ? t('mg.labelTouch') : t('mg.labelPc');
   } else {
     dom.reelZone.classList.remove('active');
   }
@@ -559,8 +584,6 @@ export function setTradeMessage(msg, isError) {
   }
 }
 
-const RARITY_LABEL = { common: 'Common', medium: 'Medium', high: 'High', rare: 'Rare' };
-
 function swatchStyle(item) {
   const base = item.color;
   const cap = item.cap || base;
@@ -569,10 +592,10 @@ function swatchStyle(item) {
 
 function itemButton(item, state) {
   if (state.equipped[item.slot] === item.id) {
-    return '<button class="trade-btn-s" disabled>Equipped</button>';
+    return `<button class="trade-btn-s" disabled>${escapeHtml(t('trade.equipped'))}</button>`;
   }
   if (state.owned.includes(item.id)) {
-    return `<button class="trade-btn-s ghost" data-action="equip" data-item="${item.id}">Equip</button>`;
+    return `<button class="trade-btn-s ghost" data-action="equip" data-item="${item.id}">${escapeHtml(t('trade.equip'))}</button>`;
   }
   const afford = state.coins >= item.price;
   return `<button class="trade-btn-s gold" data-action="buy" data-item="${item.id}" ${afford ? '' : 'disabled'}>${COIN} ${item.price}</button>`;
@@ -584,14 +607,14 @@ function renderSell(state) {
     .filter((e) => e.fish && e.count > 0);
 
   if (entries.length === 0) {
-    return '<div class="trade-empty">Your cooler is empty.<br>Catch some fish and come back!</div>';
+    return `<div class="trade-empty">${t('trade.empty')}</div>`;
   }
 
   const total = entries.reduce((sum, e) => sum + state.rarityValue[e.fish.rarity] * e.count, 0);
   const order = { rare: 0, high: 1, medium: 2, common: 3 };
-  entries.sort((a, b) => order[a.fish.rarity] - order[b.fish.rarity] || a.fish.name.localeCompare(b.fish.name));
+  entries.sort((a, b) => order[a.fish.rarity] - order[b.fish.rarity] || catchName(a.fish).localeCompare(catchName(b.fish)));
 
-  let html = `<button class="trade-sellall" data-action="sellall">Sell Everything · ${COIN} ${total}</button>`;
+  let html = `<button class="trade-sellall" data-action="sellall">${escapeHtml(t('trade.sellAll'))} · ${COIN} ${total}</button>`;
 
   for (const e of entries) {
     const unit = state.rarityValue[e.fish.rarity];
@@ -599,12 +622,12 @@ function renderSell(state) {
       <div class="trade-row">
         ${iconHtml(e.fish)}
         <span class="info">
-          <span class="nm">${escapeHtml(e.fish.name)}</span>
-          <span class="sub">${RARITY_LABEL[e.fish.rarity]} · ${COIN} ${unit} each</span>
+          <span class="nm">${escapeHtml(catchName(e.fish))}</span>
+          <span class="sub">${escapeHtml(rarityName(e.fish.rarity))} · ${COIN} ${escapeHtml(t('trade.each', { coins: unit }))}</span>
         </span>
         <span class="cnt">×${e.count}</span>
-        <button class="trade-btn-s ghost" data-action="sell" data-fish="${e.fish.id}" data-qty="1">Sell 1</button>
-        <button class="trade-btn-s" data-action="sell" data-fish="${e.fish.id}" data-qty="${e.count}">All</button>
+        <button class="trade-btn-s ghost" data-action="sell" data-fish="${e.fish.id}" data-qty="1">${escapeHtml(t('trade.sell1'))}</button>
+        <button class="trade-btn-s" data-action="sell" data-fish="${e.fish.id}" data-qty="${e.count}">${escapeHtml(t('trade.all'))}</button>
       </div>`;
   }
   return html;
@@ -612,7 +635,7 @@ function renderSell(state) {
 
 function renderShop(state) {
   const section = (title, items) => {
-    let html = `<div class="trade-section">${title}</div>`;
+    let html = `<div class="trade-section">${escapeHtml(title)}</div>`;
     for (const item of items) {
       const owned = state.owned.includes(item.id);
       const equipped = state.equipped[item.slot] === item.id;
@@ -621,8 +644,8 @@ function renderShop(state) {
         <div class="${cls}" data-item="${item.id}" data-slot="${item.slot}">
           <span class="sw" style="${swatchStyle(item)}"></span>
           <span class="info">
-            <span class="nm">${escapeHtml(item.name)}</span>
-            <span class="sub">${escapeHtml(item.desc || '')}</span>
+            <span class="nm">${escapeHtml(cosmeticName(item))}</span>
+            <span class="sub">${escapeHtml(cosmeticDesc(item))}</span>
           </span>
           ${itemButton(item, state)}
         </div>`;
@@ -630,7 +653,7 @@ function renderShop(state) {
     return html;
   };
 
-  return section('Fishing Rods', state.rods) + section('Bobbers', state.bobbers);
+  return section(t('trade.rods'), state.rods) + section(t('trade.bobbers'), state.bobbers);
 }
 
 export function renderTrade(state) {
@@ -727,11 +750,11 @@ export function renderCodex(state) {
     return (
       `<div class="codex-entry rarity-${f.rarity} ${got ? 'found' : 'locked'}">` +
         art +
-        `<div class="ce-name">${escapeHtml(f.name)}</div>` +
-        `<div class="ce-rarity">${f.rarity}</div>` +
+        `<div class="ce-name">${escapeHtml(catchName(f))}</div>` +
+        `<div class="ce-rarity">${escapeHtml(rarityName(f.rarity))}</div>` +
         (got
-          ? `<div class="ce-desc">${escapeHtml(f.desc || '')}</div>`
-          : `<div class="ce-locked">Not yet caught</div>`) +
+          ? `<div class="ce-desc">${escapeHtml(catchDesc(f))}</div>`
+          : `<div class="ce-locked">${escapeHtml(t('codex.locked'))}</div>`) +
       `</div>`
     );
   });
@@ -744,14 +767,14 @@ export function renderCodex(state) {
 
 /* ------------------------------ Notifications ------------------------------ */
 
-export function toast(playerName, fish, verb = 'caught a') {
+export function toast(playerName, fish, found = false) {
   const div = document.createElement('div');
   div.className = `toast rarity-${fish.rarity}`;
   div.innerHTML =
     iconHtml(fish) +
-    `<span class="t-body"><b>${escapeHtml(playerName)}</b> ${verb} ` +
-    `<span class="t-name">${escapeHtml(fish.name)}</span>` +
-    `<span class="t-rarity">${fish.rarity}</span></span>`;
+    `<span class="t-body"><b>${escapeHtml(playerName)}</b> ${escapeHtml(t(found ? 'toast.found' : 'toast.caught'))} ` +
+    `<span class="t-name">${escapeHtml(catchName(fish))}</span>` +
+    `<span class="t-rarity">${escapeHtml(rarityName(fish.rarity))}</span></span>`;
   dom.toasts.appendChild(div);
   while (dom.toasts.children.length > 4) dom.toasts.removeChild(dom.toasts.firstChild);
   setTimeout(() => {
@@ -772,13 +795,13 @@ export function showCatchCard(fish, opts = {}) {
 
   card.classList.remove('hidden', 'show', 'out', 'rarity-common', 'rarity-medium', 'rarity-high', 'rarity-rare');
   card.classList.add(`rarity-${fish.rarity}`);
-  const kicker = opts.kicker || (opts.isNew ? 'New species!' : 'You caught');
+  const kicker = t(opts.kickerKey || (opts.isNew ? 'cc.newSpecies' : 'cc.caught'));
   card.innerHTML =
-    `<div class="cc-kicker">${kicker}</div>` +
+    `<div class="cc-kicker">${escapeHtml(kicker)}</div>` +
     iconHtml(fish) +
-    `<div class="cc-name">${escapeHtml(fish.name)}</div>` +
+    `<div class="cc-name">${escapeHtml(catchName(fish))}</div>` +
     `<div class="cc-meta">` +
-      `<span class="cc-rarity">${fish.rarity}</span>` +
+      `<span class="cc-rarity">${escapeHtml(rarityName(fish.rarity))}</span>` +
       (opts.value ? `<span class="cc-value">${COIN} ${opts.value}</span>` : '') +
     `</div>`;
 
@@ -809,7 +832,7 @@ export function notify(text) {
 
 export function addCatchLog(playerName, fish) {
   const li = document.createElement('li');
-  li.innerHTML = `${iconHtml(fish)} <b>${escapeHtml(playerName)}</b> · ${escapeHtml(fish.name)}`;
+  li.innerHTML = `${iconHtml(fish)} <b>${escapeHtml(playerName)}</b> · ${escapeHtml(catchName(fish))}`;
   li.style.color = `var(--rarity-${fish.rarity})`;
   dom.catchlogList.prepend(li);
   while (dom.catchlogList.children.length > 9) {
@@ -874,16 +897,16 @@ export function renderInventory(state) {
     const entries = Object.entries(inventory)
       .map(([id, count]) => ({ item: fishById.get(id), count: Number(count) || 0 }))
       .filter((e) => e.item && e.count > 0)
-      .sort((a, b) => b.count - a.count || a.item.name.localeCompare(b.item.name));
+      .sort((a, b) => b.count - a.count || catchName(a.item).localeCompare(catchName(b.item)));
 
     if (!entries.length) {
-      dom.invGrid.innerHTML = '<div class="inv-empty">Your cooler is empty — go catch something!</div>';
+      dom.invGrid.innerHTML = `<div class="inv-empty">${escapeHtml(t('inv.empty'))}</div>`;
     } else {
       dom.invGrid.innerHTML = entries.map(({ item, count }) => (
-        `<div class="inv-cell" title="${escapeHtml(item.name)}">` +
+        `<div class="inv-cell" title="${escapeHtml(catchName(item))}">` +
           `${iconHtml(item)}` +
           `<span class="inv-qty">${count}</span>` +
-          `<span class="inv-name">${escapeHtml(item.name)}</span>` +
+          `<span class="inv-name">${escapeHtml(catchName(item))}</span>` +
         `</div>`
       )).join('');
     }
@@ -894,15 +917,15 @@ export function renderInventory(state) {
     const byId = new Map(cosmetics.map((c) => [c.id, c]));
     const list = owned.map((id) => byId.get(id)).filter(Boolean);
     if (!list.length) {
-      dom.invGear.innerHTML = '<div class="inv-empty">No shop purchases yet.</div>';
+      dom.invGear.innerHTML = `<div class="inv-empty">${escapeHtml(t('inv.noGear'))}</div>`;
     } else {
       dom.invGear.innerHTML = list.map((c) => {
         const isOn = equipped[c.slot] === c.id;
         const swatch = c.color
           ? `<span class="gear-swatch" style="background:${c.color}"></span>`
           : '';
-        return `<span class="gear-chip${isOn ? ' on' : ''}">${swatch}${escapeHtml(c.name)}` +
-          `${isOn ? ' · equipped' : ''}</span>`;
+        return `<span class="gear-chip${isOn ? ' on' : ''}">${swatch}${escapeHtml(cosmeticName(c))}` +
+          `${isOn ? escapeHtml(t('inv.equipped')) : ''}</span>`;
       }).join('');
     }
   }

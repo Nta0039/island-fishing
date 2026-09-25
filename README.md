@@ -28,6 +28,8 @@ the same time.
   the sand, ships, aircraft, whales and dolphins offshore, and coral reefs below the waves.
 - **Beach loungers** with umbrellas — lie back and sunbathe, with your rod planted in the sand.
 - **Works on PC and mobile** — WASD or arrow keys on desktop, virtual joystick on touch.
+- **English & 简体中文** — a top-left EN / 中文 switch re-translates the whole UI
+  (menus, shop, prompts, NPC lines) instantly, with no reload.
 
 ---
 
@@ -199,6 +201,7 @@ public/
     aircraft.js        Planes overhead
     fishing.js         Cast and reeling minigame
     shopPreview.js     Live 3D try-on model shown beside the shop
+    i18n.js            English / Simplified Chinese dictionary + helpers
     input.js           Keyboard, mouse and touch
     ui.js              DOM wiring
     toon.js            Toon shading helpers

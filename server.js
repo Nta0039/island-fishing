@@ -1038,7 +1038,7 @@ io.on('connection', (socket) => {
 
     queueSave(p);
     socket.emit('playerData', privatePlayer(p));
-    socket.emit('tradeResult', { ok: true, kind: 'sell', fish: fish.name, qty, gain });
+    socket.emit('tradeResult', { ok: true, kind: 'sell', fish: fish.name, fishId: fish.id, qty, gain });
   });
 
   socket.on('sellAll', () => {
@@ -1069,11 +1069,11 @@ io.on('connection', (socket) => {
     const item = findCosmetic(d.itemId);
     if (!item) return;
     if (p.owned.includes(item.id)) {
-      socket.emit('tradeResult', { ok: false, message: 'Already owned.' });
+      socket.emit('tradeResult', { ok: false, code: 'owned' });
       return;
     }
     if (p.coins < item.price) {
-      socket.emit('tradeResult', { ok: false, message: `Need ${item.price - p.coins} more coins.` });
+      socket.emit('tradeResult', { ok: false, code: 'needCoins', need: item.price - p.coins });
       return;
     }
 
@@ -1083,7 +1083,7 @@ io.on('connection', (socket) => {
 
     queueSave(p);
     socket.emit('playerData', privatePlayer(p));
-    socket.emit('tradeResult', { ok: true, kind: 'buy', item: item.name });
+    socket.emit('tradeResult', { ok: true, kind: 'buy', item: item.name, itemId: item.id });
     io.emit('playerCosmetics', { id: p.id, equipped: p.equipped });
   });
 
@@ -1098,7 +1098,7 @@ io.on('connection', (socket) => {
 
     queueSave(p);
     socket.emit('playerData', privatePlayer(p));
-    socket.emit('tradeResult', { ok: true, kind: 'equip', item: item.name });
+    socket.emit('tradeResult', { ok: true, kind: 'equip', item: item.name, itemId: item.id });
     io.emit('playerCosmetics', { id: p.id, equipped: p.equipped });
   });
 

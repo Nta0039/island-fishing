@@ -120,6 +120,38 @@ button, input, textarea, select, a, label,
 }
 #topbar-right > * { pointer-events: auto; }
 
+/* Left cluster: the logo (pause on touch) and the language switch. */
+#topbar-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  pointer-events: none;
+}
+#topbar-left > * { pointer-events: auto; }
+
+#lang-btn {
+  display: flex;
+  align-items: center;
+  background: var(--ui-bg);
+  border: 1px solid var(--ui-border);
+  backdrop-filter: blur(8px);
+  color: #cfe9ff;
+  padding: 7px 13px;
+  border-radius: 999px;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: background 0.15s, transform 0.12s;
+}
+#lang-btn:hover { background: rgba(255, 255, 255, 0.14); }
+#lang-btn:active { transform: scale(0.95); }
+#lang-btn .lang-sep { opacity: 0.35; margin: 0 3px; }
+#lang-btn .lang-en,
+#lang-btn .lang-zh { opacity: 0.5; }
+#lang-btn.en .lang-en,
+#lang-btn.zh .lang-zh { opacity: 1; color: #ffd97a; }
+
 /* Player purse, shown beside the online count. */
 #coin-hud {
   display: flex;

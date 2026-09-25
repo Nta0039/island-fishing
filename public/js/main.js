@@ -31,6 +31,9 @@ import { createReef } from './reef.js';
 import * as Music from './music.js';
 import * as Qr from './qr.js';
 import { createShopPreview } from './shopPreview.js';
+import {
+  t, catchName, cosmeticName, npcLine, NPC_COUNT, toggleLocale, onLocaleChange,
+} from './i18n.js';
 import * as UI from './ui.js';
 
 /* ------------------------------------------------------------------ */
@@ -99,9 +102,7 @@ if (input.touch) {
   const drawQr = () => {
     if (Qr.render(UI.qrCanvas(), shareUrl)) {
       const local = /^(localhost|127\.0\.0\.1|\[::1\])$/i.test(window.location.hostname);
-      UI.setQrHint(local
-        ? 'Local address — phones cannot reach this. Deploy it, or use your machine\'s IP.'
-        : 'Point your camera at the code');
+      UI.setQrHint(t(local ? 'qr.hintLocal' : 'qr.hint'));
       return;
     }
     if (tries++ < 40) setTimeout(drawQr, 150);
@@ -202,9 +203,7 @@ function enterTelescope() {
     const req = canvas.requestPointerLock();
     if (req && typeof req.catch === 'function') req.catch(() => {});
   }
-  UI.setHint(input.touch
-    ? 'Telescope — swipe to look around, tap to step back'
-    : 'Telescope — move the mouse to look around, Esc to step back');
+  UI.setHint(t(input.touch ? 'hint.telescopeTouch' : 'hint.telescopePc'));
 }
 
 function exitTelescope() {
@@ -394,7 +393,7 @@ function connect(name, color) {
 
   socket.on('connect_error', () => {
     connecting = false;
-    UI.setStartError('Could not reach the server.');
+    UI.setStartError(t('error.serverUnreachable'));
     UI.setLoading(false);
     /* Only fall back to the menu orbit if we never got into the game —
        a dropped socket mid-session must never yank the camera back up. */
@@ -409,7 +408,7 @@ function connect(name, color) {
   socket.on('serverFull', (data) => {
     connecting = false;
     UI.setLoading(false);
-    UI.setStartError(`Server is full (${data.max}/${data.max}). Try again in a moment.`);
+    UI.setStartError(t('error.serverFull', { max: data.max }));
     if (!joined) {
       cameraMode = 'menu';
       camera.fov = 60;
@@ -422,7 +421,7 @@ function connect(name, color) {
   socket.on('nameTaken', () => {
     connecting = false;
     UI.setLoading(false);
-    UI.setStartError('This username is currently in use.');
+    UI.setStartError(t('error.nameTaken'));
     UI.markNameInvalid(true);
     if (!joined) {
       cameraMode = 'menu';
@@ -527,11 +526,11 @@ function onInit(data) {
   UI.showGame(true);
   UI.setHint('');
   if (data.restored) {
-    UI.notify(`Welcome back, ${myName} — your catch and coins were restored.`);
+    UI.notify(t('notify.welcomeBack', { name: myName }));
   } else if (data.persistBlocked) {
     /* The save server could not be reached, so we refuse to overwrite whatever
        is stored under this name. Better to warn than to silently wipe it. */
-    UI.notify('Save server unreachable — progress will not be kept this session.');
+    UI.notify(t('notify.persistBlocked'));
   }
   clock.getDelta();
 }
@@ -659,11 +658,11 @@ function onFishEscaped(d) {
      sure a held input cannot leak into the next cast. */
   input.hold = false;
   if (d.reason === 'seagull') {
-    UI.notify(`A seagull made off with your ${d.fish ? d.fish.name : 'fish'}!`);
+    UI.notify(t('notify.seagullStole', { fish: d.fish ? catchName(d.fish) : t('noun.fish') }));
   } else if (d.reason === 'full') {
     /* onInventoryFull has already explained; keep this quiet. */
   } else {
-    UI.notify('The fish got away — you were too slow.');
+    UI.notify(t('notify.fishGotAway'));
   }
   updateHint();
 }
@@ -671,8 +670,8 @@ function onFishEscaped(d) {
 /** The cooler is at capacity, so the catch had to be let go. */
 function onInventoryFull(d) {
   const cap = (d && d.cap) || playerData.capacity || 50;
-  UI.notify(`Cooler full (${cap}/${cap}) — sell some fish to David before catching more.`);
-  UI.setHint(`Cooler full — ${cap}/${cap}`);
+  UI.notify(t('hint.fullMsg', { cap }));
+  UI.setHint(t('hint.full', { cap }));
 }
 
 /** Drives the tug-of-war bar and reports the held time to the server. */
@@ -714,12 +713,12 @@ function onFishCaught(record) {
 }
 
 function onCollected(record) {
-  UI.toast(record.name, record.item, 'found a');
+  UI.toast(record.name, record.item, true);
   UI.addCatchLog(`${record.name} 🧺`, record.item);
   if (record.id === myId) {
     /* Same presentation as a landed fish, just with finder wording. */
     UI.showCatchCard(record.item, {
-      kicker: 'You found',
+      kickerKey: 'cc.found',
       value: record.item.value,
     });
   }
@@ -744,13 +743,22 @@ function onPlayerData(d) {
 function onTradeResult(r) {
   if (!r) return;
   if (!r.ok) {
-    UI.setTradeMessage(r.message || 'Not enough coins.', true);
+    if (r.code === 'owned') UI.setTradeMessage(t('trade.owned'), true);
+    else if (r.code === 'needCoins') UI.setTradeMessage(t('trade.needCoins', { need: r.need }), true);
+    else UI.setTradeMessage(r.message || t('notify.notEnough'), true);
     return;
   }
-  if (r.kind === 'sell') UI.setTradeMessage(`Sold ${r.qty}× ${r.fish} for 🪙 ${r.gain}`);
-  else if (r.kind === 'sellAll') UI.setTradeMessage(`Sold ${r.qty} fish for 🪙 ${r.gain}`);
-  else if (r.kind === 'buy') UI.setTradeMessage(`Purchased ${r.item}!`);
-  else if (r.kind === 'equip') UI.setTradeMessage(`Equipped ${r.item}.`);
+  if (r.kind === 'sell') {
+    UI.setTradeMessage(t('notify.sold', {
+      qty: r.qty, fish: catchName({ id: r.fishId, name: r.fish }), coins: r.gain,
+    }));
+  } else if (r.kind === 'sellAll') {
+    UI.setTradeMessage(t('notify.soldAll', { qty: r.qty, coins: r.gain }));
+  } else if (r.kind === 'buy') {
+    UI.setTradeMessage(t('notify.purchased', { item: cosmeticName({ id: r.itemId, name: r.item }) }));
+  } else if (r.kind === 'equip') {
+    UI.setTradeMessage(t('notify.equipped', { item: cosmeticName({ id: r.itemId, name: r.item }) }));
+  }
 }
 
 /* ------------------------------------------------------------------ */
@@ -889,11 +897,11 @@ function closePause() {
  */
 function saveProgress(thenLeave) {
   if (!socket || !socket.connected) {
-    UI.setPauseStatus('Not connected — cannot save right now.', 'err');
+    UI.setPauseStatus(t('pause.notConnected'), 'err');
     return;
   }
   UI.setPauseBusy(true);
-  UI.setPauseStatus('Saving…');
+  UI.setPauseStatus(t('pause.saving'));
 
   /* The server acks with the result, so we can tell the player the truth
      rather than assuming the write landed. */
@@ -904,17 +912,17 @@ function saveProgress(thenLeave) {
     UI.setPauseBusy(false);
 
     if (res && res.ok) {
-      const items = `${res.items} item${res.items === 1 ? '' : 's'}`;
-      UI.setPauseStatus(`Saved — ${items}, ${res.coins} coins.`, 'ok');
+      const items = t(res.items === 1 ? 'pause.savedItems' : 'pause.savedItemsPlural', { n: res.items });
+      UI.setPauseStatus(t('pause.saved', { items, coins: res.coins }), 'ok');
       if (thenLeave) setTimeout(returnToTitle, 550);
       return;
     }
     if (res && res.reason === 'disabled') {
-      UI.setPauseStatus('Saving is switched off on this server.', 'err');
+      UI.setPauseStatus(t('pause.disabled'), 'err');
     } else if (res && res.reason === 'blocked') {
-      UI.setPauseStatus('Save server unreachable — progress kept in memory only.', 'err');
+      UI.setPauseStatus(t('pause.blocked'), 'err');
     } else {
-      UI.setPauseStatus('Could not save. Please try again.', 'err');
+      UI.setPauseStatus(t('pause.error'), 'err');
     }
   };
 
@@ -996,6 +1004,26 @@ UI.onTradeTabChange((tab) => {
   }
 });
 
+/* Language switch. setLocale() re-applies the static data-i18n text and the
+   following listener refreshes everything the JS builds dynamically, so the
+   whole UI changes without a reload. */
+UI.onLangClick(() => toggleLocale());
+
+onLocaleChange(() => {
+  UI.setTradeMessage('');
+  UI.setPauseStatus('');
+  if (tradeOpen) refreshTrade();
+  if (UI.isInventoryOpen()) refreshInventory();
+  if (UI.isCodexOpen()) {
+    UI.renderCodex({
+      fish: [...catchById.values()].filter((f) => f.weight),
+      discovered: playerData.discovered,
+    });
+  }
+  if (shopPreview) previewEquipped();
+  updateHint();
+});
+
 /* Esc pauses the game. While the mouse is captured the browser swallows the
    key and just releases the pointer, so the pointerlockchange listener below
    is what actually catches that case; this handler covers the unlocked state
@@ -1027,10 +1055,10 @@ window.addEventListener('keydown', (e) => {
   if (e.code === 'KeyF') {
     if (local.fishing === 'waiting' || local.fishing === 'hooked') cancelFishing();
     else if (!currentAction && local.fishing === 'idle') castLine();
-    else if (currentAction && currentAction.label === 'Fish') currentAction.run();
+    else if (currentAction && currentAction.key === 'fish') currentAction.run();
   } else if (e.code === 'KeyE') {
     if (!currentAction) return;
-    if (['Collect', 'Use', 'Sit', 'Sunbathe', 'Trade'].includes(currentAction.label)) {
+    if (['collect', 'use', 'sit', 'sunbathe', 'trade'].includes(currentAction.key)) {
       currentAction.run();
     }
   }
@@ -1045,7 +1073,7 @@ UI.onPlay(() => {
   /* A name is mandatory — no anonymous anglers. */
   const name = (UI.dom.nameInput.value || '').trim();
   if (!name) {
-    UI.setStartError('Please enter a name before you set sail.');
+    UI.setStartError(t('start.nameError'));
     UI.markNameInvalid(true);
     if (UI.dom.nameInput.focus) UI.dom.nameInput.focus();
     return;
@@ -1113,22 +1141,21 @@ function sitOrLie() {
  */
 function pickAction(ctx) {
   if (!joined || tradeOpen || UI.isCodexOpen()) return null;
-  if (telescopeMode) return { label: 'Exit telescope', alt: true, run: exitTelescope };
+  /* `key` is stable for the keyboard handlers; `label` is the localized text. */
+  const act = (key, run, alt) => ({ key, label: t('action.' + key), run, alt: !!alt });
+  if (telescopeMode) return act('exitTelescope', exitTelescope, true);
   if (local.struggle) return null;
-  if (local.fishing === 'waiting' || local.fishing === 'hooked') {
-    return { label: 'Reel in', alt: true, run: cancelFishing };
-  }
+  if (local.fishing === 'waiting' || local.fishing === 'hooked') return act('reelIn', cancelFishing, true);
   if (local.fishing === 'minigame') return null;
-  if (lyingChair) return { label: 'Get up', alt: true, run: getUp };
-  if (sittingSeat) return { label: 'Stand', alt: true, run: standUp };
+  if (lyingChair) return act('getUp', getUp, true);
+  if (sittingSeat) return act('stand', standUp, true);
   if (!ctx.idle) return null;
-  if (nearTelescope()) return { label: 'Use', run: enterTelescope };
-  /* The button text matches the bracketed word in the on-screen hint. */
-  if (ctx.find) return { label: 'Collect', run: pickUp };
-  if (ctx.lounger) return { label: 'Sunbathe', run: lieDown };
-  if (ctx.seat) return { label: 'Sit', run: sitDown };
-  if (ctx.atMerchant) return { label: 'Trade', run: openTrade };
-  if (ctx.nearWater) return { label: 'Fish', run: castLine };
+  if (nearTelescope()) return act('use', enterTelescope);
+  if (ctx.find) return act('collect', pickUp);
+  if (ctx.lounger) return act('sunbathe', lieDown);
+  if (ctx.seat) return act('sit', sitDown);
+  if (ctx.atMerchant) return act('trade', openTrade);
+  if (ctx.nearWater) return act('fish', castLine);
   return null;
 }
 
@@ -1150,31 +1177,29 @@ function startMinigame() {
 function updateHint() {
   if (!joined) return;
   if (telescopeMode) {
-    UI.setHint(input.touch
-      ? 'Telescope — swipe to look around, tap to step back'
-      : 'Telescope — move the mouse to look around, Esc to step back');
+    UI.setHint(t(input.touch ? 'hint.telescopeTouch' : 'hint.telescopePc'));
   } else if (local.fishing === 'waiting') {
-    UI.setHint('Line cast — waiting for a bite…');
+    UI.setHint(t('hint.waiting'));
   } else if (local.fishing === 'hooked') {
-    UI.setHint('A bite! Work the line — Space or the reel button');
+    UI.setHint(t('hint.bite'));
   } else if (local.fishing === 'minigame') {
     UI.setHint('');
   } else if (lyingChair) {
-    UI.setHint('Sunbathing — press [Get up] or move to stand');
+    UI.setHint(t('hint.sunbathing'));
   } else if (sittingSeat) {
-    UI.setHint('Resting on the bench — press [Stand] or move to get up');
+    UI.setHint(t('hint.sitting'));
   } else if (nearTelescope()) {
-    UI.setHint('Press [Use] to look through the telescope');
+    UI.setHint(t('hint.telescope'));
   } else if (nearestChair()) {
-    UI.setHint('Press [Sunbathe] to lie back on the lounger');
+    UI.setHint(t('hint.lounger'));
   } else if (nearestSeat()) {
-    UI.setHint('Press [Sit] to rest on the bench');
+    UI.setHint(t('hint.seat'));
   } else if (nearCollectible()) {
-    UI.setHint('A beach find — press [Collect]');
+    UI.setHint(t('hint.find'));
   } else if (nearMerchant()) {
-    UI.setHint('Trade your catch with David');
+    UI.setHint(t('hint.merchant'));
   } else {
-    UI.setHint(atWater() ? 'Press [Fish] to cast your line' : '');
+    UI.setHint(atWater() ? t('hint.water') : '');
   }
 }
 
@@ -1382,21 +1407,11 @@ let elapsed = 0;
 let fishingWatch = 0;
 let prevFishing = 'idle';
 
-/* The merchant pipes up with a random line when a player walks over. */
-const MERCHANT_GREETINGS = [
-  'Ahoy! Got a catch to sell?',
-  'The tide has been kind today.',
-  'Fine weather for fishing, friend.',
-  'Bring me shells and I pay fair.',
-  "Forty years I've sailed these waters.",
-  'Care for a new rod? Best on the isle.',
-  'Reel them in slow — that is the trick.',
-  'Smells like a good haul today!',
-  'The big ones hide deep, lad.',
-  'My old bones say rain is coming.',
-  'Watch the gulls — they know where they bite.',
-  'A steady hand beats a strong arm.',
-];
+/* The merchant pipes up with a random line when a player walks over. The
+   lines themselves live in the i18n dictionary, so they follow the locale. */
+function merchantGreeting() {
+  return npcLine(Math.floor(Math.random() * NPC_COUNT));
+}
 let wasNearMerchant = false;
 let greetCooldown = 0;
 
@@ -1661,7 +1676,7 @@ function animate() {
   greetCooldown = Math.max(0, greetCooldown - dt);
   const atMerchantNow = joined && nearMerchant();
   if (atMerchantNow && !wasNearMerchant && greetCooldown <= 0) {
-    const line = MERCHANT_GREETINGS[Math.floor(Math.random() * MERCHANT_GREETINGS.length)];
+    const line = merchantGreeting();
     world.merchantSay(line);
     UI.notify(line);
     greetCooldown = 14;
