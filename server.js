@@ -15,6 +15,9 @@ const io = new Server(server, {
 });
 
 const PORT = process.env.PORT || 3000;
+/* Render sets RENDER_GIT_COMMIT on every deploy, so /health (and the boot
+   log) can tell you exactly which build is live. */
+const BUILD = (process.env.RENDER_GIT_COMMIT || process.env.GIT_COMMIT || 'dev').slice(0, 10);
 const MAX_PLAYERS = 10;
 const ISLAND_RADIUS = 38;
 const WALK_LIMIT = 56.0;
@@ -175,7 +178,7 @@ let collectibleSeq = 1;
 
 app.use(express.static(path.join(__dirname, 'public')));
 app.get('/health', (_req, res) => {
-  res.json({ ok: true, players: players.size, max: MAX_PLAYERS });
+  res.json({ ok: true, players: players.size, max: MAX_PLAYERS, build: BUILD });
 });
 
 function rand(a, b) { return a + Math.random() * (b - a); }
@@ -1193,6 +1196,7 @@ process.on('SIGINT', () => flushAll('SIGINT'));
 server.listen(PORT, () => {
   console.log(`\n  🏝️  Island Fishing server running`);
   console.log(`  → Local:   http://localhost:${PORT}`);
+  console.log(`  → Build:   ${BUILD}`);
   console.log(`  → Max concurrent players: ${MAX_PLAYERS}`);
   console.log(`  → ${FISH_TABLE.length} fish species | ${COLLECTIBLES.length} collectibles`);
   console.log(`  → ${RODS.length} rods | ${BOBBERS.length} bobbers\n`);

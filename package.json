@@ -5,11 +5,12 @@
   "description": "3D cross-platform multiplayer island fishing game (Three.js + Socket.io)",
   "main": "server.js",
   "scripts": {
+    "build": "node --check server.js && node --check db.js",
     "start": "node server.js",
     "dev": "node server.js"
   },
   "engines": {
-    "node": ">=18"
+    "node": ">=20.0.0"
   },
   "dependencies": {
     "express": "^4.19.2",
