@@ -106,6 +106,9 @@ const STRUGGLE_NEED = 3.0;
 
 /* A brand-new angler is guaranteed exactly one gull within this many catches. */
 const BEGINNER_CATCHES = 3;
+/* If a top-tier fish takes the scripted slot, the gull slips to the next
+   eligible catch instead of being lost — but not indefinitely. */
+const BEGINNER_GULL_BY = BEGINNER_CATCHES + 2;
 
 /* Coins earned per fish sold to the merchant. */
 const RARITY_VALUE = { common: 6, medium: 15, high: 40, rare: 120 };
@@ -196,6 +199,11 @@ function rollFish() {
 const RARE_TIER = 'rare';
 const BEGINNER_CASTS = 5;
 
+/* Rarity ladder, weakest to strongest. The last entry is the top tier — a
+   gull never steals one of these, so they always land safely. */
+const RARITY_ORDER = ['common', 'medium', 'high', 'rare'];
+const TOP_TIER = RARITY_ORDER[RARITY_ORDER.length - 1];
+
 /**
  * Beginner luck: a new angler is guaranteed a top-tier fish by their
  * fifth cast. Until they have landed one, the fifth attempt is forced to
@@ -214,16 +222,21 @@ function rollFishFor(p) {
 /**
  * Whether a gull should dive on the catch the player is reeling in.
  *
- * A brand-new angler is guaranteed exactly one tug-of-war inside their first
- * few catches: random gulls are suppressed until the reel that would land
- * their third fish, where one is forced. Once it has happened (win or lose)
+ * The top rarity tier is exempt: a gull never takes one of those fish, so
+ * the 25% chance is skipped and the catch is secured at once.
+ *
+ * Otherwise, a brand-new angler is guaranteed exactly one tug-of-war: random
+ * gulls are suppressed until the reel that would land their third fish, where
+ * one is forced. If a top-tier fish happens to sit on that reel the script
+ * simply waits for the next eligible catch. Once it has happened (win or lose)
  * the flag sticks, so it never repeats — and everyone past that point, and
  * anyone who has already met the gull, just gets the usual random chance.
  */
-function wantsStruggle(p) {
+function wantsStruggle(p, fish) {
+  if (fish && fish.rarity === TOP_TIER) return false;
   const catches = p.casts || 0;
-  if (!p.gullSeen && catches < BEGINNER_CATCHES) {
-    return catches === BEGINNER_CATCHES - 1;
+  if (!p.gullSeen && catches < BEGINNER_GULL_BY) {
+    return catches >= BEGINNER_CATCHES - 1;
   }
   return Math.random() < STRUGGLE_CHANCE;
 }
@@ -945,7 +958,7 @@ io.on('connection', (socket) => {
 
     /* Every so often a gull dives in and tries to make off with it — and a
        new angler is guaranteed one within their first few catches. */
-    if (wantsStruggle(p)) {
+    if (wantsStruggle(p, fish)) {
       /* Mark the beginner encounter as spent so it cannot repeat, even if
          the gull wins this time. */
       if (!p.gullSeen) {
