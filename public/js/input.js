@@ -59,6 +59,11 @@ export class Input {
     return { right, forward, magnitude: Math.min(1, len) };
   }
 
+  /** True while either Shift key is held — doubles the walk speed. */
+  get sprint() {
+    return this.keys.has('ShiftLeft') || this.keys.has('ShiftRight');
+  }
+
   attach(canvas) {
     /* ---------------- Keyboard ---------------- */
     /* `e.code` is layout-independent and is what we key off; the legacy

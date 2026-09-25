@@ -798,8 +798,10 @@ function openTrade() {
   const pv = ensureShopPreview();
   if (pv) {
     previewEquipped();
-    /* The panel must be visible before the canvas has a size to measure. */
+    /* The panel must be visible before the canvas has a size to measure,
+       and again once the browser has actually laid it out. */
     pv.resize();
+    requestAnimationFrame(() => { if (shopPreview) shopPreview.resize(); });
   }
   UI.setTradeMessage('');
 }
@@ -1419,8 +1421,10 @@ function animate() {
       if (_dir.lengthSq() > 1e-6) {
         _dir.normalize();
 
-        const nx = local.x + _dir.x * SPEED * dt;
-        const nz = local.z + _dir.z * SPEED * dt;
+        /* Hold Shift to sprint at twice the walking speed. */
+        const speed = SPEED * (input.sprint ? 2 : 1);
+        const nx = local.x + _dir.x * speed * dt;
+        const nz = local.z + _dir.z * speed * dt;
 
         let moved = false;
         if (isWalkable(nx, local.z)) { local.x = nx; moved = true; }

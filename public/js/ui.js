@@ -119,7 +119,7 @@ function iconHtml(fish, cls = 'fish-icon') {
 }
 
 /** Inline coin glyph, used wherever a price or balance is shown. */
-const COIN = '<img class="coin-icon" src="/img/ui/coin.png" alt="" draggable="false" />';
+const COIN = '<img class="coin-icon" src="/img/ui/coin.png" alt="" draggable="false" data-emoji="🪙" />';
 
 /* Swap any fish icon that fails to load for its emoji. */
 document.addEventListener('error', (e) => {
@@ -642,6 +642,11 @@ dom.tradeBody.addEventListener('click', (e) => {
   const btn = e.target.closest('[data-action]');
   if (btn) {
     if (btn.disabled) return;
+    /* Preview the item even when its buy/equip button is what was clicked. */
+    const btnRow = btn.closest('.trade-row[data-item]');
+    if (btnRow && tradePreviewHandler) {
+      tradePreviewHandler({ itemId: btnRow.dataset.item, slot: btnRow.dataset.slot });
+    }
     const action = btn.dataset.action;
     if (action === 'sellall') {
       if (tradeActionHandler) tradeActionHandler({ type: 'sellAll' });

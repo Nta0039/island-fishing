@@ -24,7 +24,7 @@
   <div id="topbar">
     <div id="brand"><img class="brand-art" src="/img/title.png" alt="Island Fishing" /></div>
     <div id="topbar-right">
-      <div id="coin-hud" title="Coins"><img class="coin-icon" src="/img/ui/coin.png" alt="" draggable="false" /><span id="hud-coins">0</span></div>
+      <div id="coin-hud" title="Coins"><img class="coin-icon" src="/img/ui/coin.png" alt="" draggable="false" data-emoji="🪙" /><span id="hud-coins">0</span></div>
       <div id="stats"><span id="online-count">0</span><span class="sep">/</span><span id="online-max">10</span> online</div>
       <button id="music-btn" title="Background music"><span class="music-icon">🔊</span></button>
       <button id="codex-btn" title="Fish Encyclopedia"><span class="codex-icon">📖</span><span class="codex-label">Encyclopedia</span></button>
@@ -46,7 +46,7 @@
       </button>
       <div class="info-body">
         <ul class="ch-pc">
-          <li><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> or <kbd>↑</kbd><kbd>←</kbd><kbd>↓</kbd><kbd>→</kbd> move</li>
+          <li><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> or <kbd>↑</kbd><kbd>←</kbd><kbd>↓</kbd><kbd>→</kbd> move · hold <kbd>Shift</kbd> to sprint</li>
           <li><b>Click</b> the view to capture the mouse, then just move it to look <span class="ch-dim">(<b>Esc</b> releases)</span></li>
           <li><kbd>F</kbd> cast or reel in · <kbd>E</kbd> interact</li>
           <li><b>Space</b> hold to reel in</li>
@@ -145,7 +145,7 @@
       <div class="trade-main">
         <div class="trade-head">
           <div class="trade-title">🧙 David</div>
-          <div class="trade-coins"><img class="coin-icon" src="/img/ui/coin.png" alt="" draggable="false" /> <span id="trade-coins">0</span></div>
+          <div class="trade-coins"><img class="coin-icon" src="/img/ui/coin.png" alt="" draggable="false" data-emoji="🪙" /> <span id="trade-coins">0</span></div>
           <button id="trade-close" aria-label="Close">✕</button>
         </div>
         <div class="trade-tabs">
@@ -163,7 +163,7 @@
     <div class="inv-card">
       <div class="inv-head">
         <div class="inv-title">🎒 Inventory</div>
-        <div class="inv-coins"><img class="coin-icon" src="/img/ui/coin.png" alt="" draggable="false" /> <span id="inv-coins">0</span></div>
+        <div class="inv-coins"><img class="coin-icon" src="/img/ui/coin.png" alt="" draggable="false" data-emoji="🪙" /> <span id="inv-coins">0</span></div>
         <button id="inventory-close" aria-label="Close">✕</button>
       </div>
 
@@ -231,7 +231,7 @@
 
     <button id="play-btn">Play</button>
     <div class="controls-help">
-      <p><b>PC</b> — WASD or arrows to move · drag mouse to look · hold <b>Space</b> to reel</p>
+      <p><b>PC</b> — WASD or arrows to move · hold <b>Shift</b> to sprint · drag mouse to look · hold <b>Space</b> to reel</p>
       <p><b>Mobile / Tablet</b> — left joystick to move · drag to look · hold bottom-right to reel</p>
     </div>
     <div id="start-error" class="error"></div>
