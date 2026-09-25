@@ -60,6 +60,8 @@ button, input, textarea, select, a, label,
   align-items: center;
   gap: 10px;
   pointer-events: none;
+  /* Above the info cards, so the logo is always tappable. */
+  z-index: 20;
 }
 
 #brand {
@@ -71,6 +73,13 @@ button, input, textarea, select, a, label,
   box-shadow: 0 6px 22px rgba(0, 0, 0, 0.3);
   display: flex;
   align-items: center;
+  /* The logo doubles as the mobile pause button: unlike its siblings it
+     must opt back into pointer events (the top bar disables them), and it
+     sits on its own layer so nothing overlaps the tap target. */
+  pointer-events: auto;
+  position: relative;
+  z-index: 1;
+  -webkit-tap-highlight-color: transparent;
 }
 /* The painted title replaces the old text wordmark. */
 #brand .brand-art {

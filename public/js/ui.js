@@ -918,7 +918,17 @@ export function isPauseOpen() { return pauseOpen; }
 
 /** The painted logo doubles as the pause button on touch devices. */
 export function onPauseClick(handler) {
-  if (dom.brand) dom.brand.addEventListener('click', handler);
+  const el = dom.brand;
+  if (!el) return;
+  /* Use pointerdown: it fires the instant a finger lands (no 300 ms click
+     delay) and covers mouse input too. preventDefault() stops the follow-up
+     click so the toggle can never fire twice. */
+  if (window.PointerEvent) {
+    el.addEventListener('pointerdown', (e) => { e.preventDefault(); handler(); });
+  } else {
+    el.addEventListener('touchstart', (e) => { e.preventDefault(); handler(); }, { passive: false });
+    el.addEventListener('click', handler);
+  }
 }
 
 export function onPauseClose(handler) {
