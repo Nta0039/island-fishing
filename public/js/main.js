@@ -1030,7 +1030,7 @@ window.addEventListener('keydown', (e) => {
     else if (currentAction && currentAction.label === 'Fish') currentAction.run();
   } else if (e.code === 'KeyE') {
     if (!currentAction) return;
-    if (['Pick up', 'Use telescope', 'Sit', 'Sunbathe', 'Trade'].includes(currentAction.label)) {
+    if (['Collect', 'Use', 'Sit', 'Sunbathe', 'Trade'].includes(currentAction.label)) {
       currentAction.run();
     }
   }
@@ -1122,8 +1122,9 @@ function pickAction(ctx) {
   if (lyingChair) return { label: 'Get up', alt: true, run: getUp };
   if (sittingSeat) return { label: 'Stand', alt: true, run: standUp };
   if (!ctx.idle) return null;
-  if (nearTelescope()) return { label: 'Use telescope', run: enterTelescope };
-  if (ctx.find) return { label: 'Pick up', run: pickUp };
+  if (nearTelescope()) return { label: 'Use', run: enterTelescope };
+  /* The button text matches the bracketed word in the on-screen hint. */
+  if (ctx.find) return { label: 'Collect', run: pickUp };
   if (ctx.lounger) return { label: 'Sunbathe', run: lieDown };
   if (ctx.seat) return { label: 'Sit', run: sitDown };
   if (ctx.atMerchant) return { label: 'Trade', run: openTrade };
@@ -1173,7 +1174,7 @@ function updateHint() {
   } else if (nearMerchant()) {
     UI.setHint('Trade your catch with David');
   } else {
-    UI.setHint(atWater() ? 'Press [Fishing] to cast your line' : '');
+    UI.setHint(atWater() ? 'Press [Fish] to cast your line' : '');
   }
 }
 
@@ -1551,14 +1552,15 @@ function animate() {
   const lounger = idle && !sittingSeat && !lyingChair && !find && !seat ? nearestChair() : null;
 
   /* ---------- The floating action prompt ----------
-     One context action at a time, projected from a point beside the
-     player's shoulder so it reads as part of the world. */
+     One context action at a time, projected from a point beside the player
+     so it reads as part of the world. The camera sits behind the player, so
+     the world -x side is the screen's right — that is the side we anchor to. */
   const action = pickAction({ idle, seat, lounger, find, atMerchant, nearWater });
   if (action && local.group) {
     _promptAnchor.set(
-      local.x + Math.cos(local.rotation) * 1.25,
+      local.x - Math.cos(local.rotation) * 1.25,
       local.group.position.y + 1.5,
-      local.z - Math.sin(local.rotation) * 1.25
+      local.z + Math.sin(local.rotation) * 1.25
     );
     const ps = UI.projectToScreen(_promptAnchor, camera);
     UI.showActionPrompt(ps.visible, action.label, action.alt);
