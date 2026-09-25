@@ -798,10 +798,11 @@ function openTrade() {
   const pv = ensureShopPreview();
   if (pv) {
     previewEquipped();
-    /* The panel must be visible before the canvas has a size to measure,
-       and again once the browser has actually laid it out. */
-    pv.resize();
-    requestAnimationFrame(() => { if (shopPreview) shopPreview.resize(); });
+    /* The preview is only shown on the Shop tab, so only measure it there. */
+    if (tradeTab === 'shop') {
+      pv.resize();
+      requestAnimationFrame(() => { if (shopPreview) shopPreview.resize(); });
+    }
   }
   UI.setTradeMessage('');
 }
@@ -983,6 +984,16 @@ UI.onTradePreview(({ itemId }) => {
   if (!item || !pv) return;
   if (item.slot === 'bobber') pv.showBobber(item);
   else pv.showRod(item);
+});
+
+/* The preview belongs to the Shop tab: switching to it reveals and sizes the
+   model, and switching back to Sell Fish simply stops drawing it. */
+UI.onTradeTabChange((tab) => {
+  tradeTab = tab;
+  if (tab === 'shop' && shopPreview) {
+    previewEquipped();
+    requestAnimationFrame(() => { if (shopPreview) shopPreview.resize(); });
+  }
 });
 
 /* Esc pauses the game. While the mouse is captured the browser swallows the
@@ -1682,8 +1693,9 @@ function animate() {
   /* ---------- Toon shading + pencil-sketch edge pass ---------- */
   postfx.render(dt);
 
-  /* The shop's live 3D preview has its own canvas and only draws while open. */
-  if (tradeOpen && shopPreview) shopPreview.render(dt);
+  /* The shop's live 3D preview has its own canvas and only draws on the
+     Shop tab, while the panel is open. */
+  if (tradeOpen && shopPreview && UI.isShopTab()) shopPreview.render(dt);
 }
 
 let hintAcc = 0;

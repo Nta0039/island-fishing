@@ -47,6 +47,7 @@ export const dom = {
   startError: $('start-error'),
   colorPicker: $('color-picker'),
   tradePanel: $('trade-panel'),
+  tradeCard: document.querySelector('.trade-card'),
   tradeCoins: $('trade-coins'),
   tradeClose: $('trade-close'),
   tradeBody: $('trade-body'),
@@ -516,6 +517,7 @@ export function positionMinigame(screen, indicator, targetStart, targetWidth, pr
 let tradeState = null;
 let tradeActionHandler = null;
 let tradePreviewHandler = null;
+let tradeTabHandler = null;
 let tradeMsgTimer = null;
 
 export function onTradeClose(handler) {
@@ -529,6 +531,16 @@ export function onTradeAction(handler) {
 /** Fires when a shop row is clicked, so the 3D preview can be updated. */
 export function onTradePreview(handler) {
   tradePreviewHandler = handler;
+}
+
+/** Fires when the Sell/Shop tab changes, so the preview can show or hide. */
+export function onTradeTabChange(handler) {
+  tradeTabHandler = handler;
+}
+
+/** True while the shop's item list (rather than the sell list) is showing. */
+export function isShopTab() {
+  return !!(tradeState && tradeState.tab === 'shop');
 }
 
 export function showTradePanel(on) {
@@ -628,6 +640,8 @@ export function renderTrade(state) {
     tab.classList.toggle('active', tab.dataset.tab === state.tab);
   }
   dom.tradeBody.innerHTML = state.tab === 'shop' ? renderShop(state) : renderSell(state);
+  /* The live 3D preview only belongs to the Shop tab. */
+  if (dom.tradeCard) dom.tradeCard.classList.toggle('preview-off', state.tab !== 'shop');
 }
 
 dom.tradeTabs.forEach((tab) => {
@@ -635,6 +649,7 @@ dom.tradeTabs.forEach((tab) => {
     if (!tradeState) return;
     tradeState.tab = tab.dataset.tab;
     renderTrade(tradeState);
+    if (tradeTabHandler) tradeTabHandler(tradeState.tab);
   });
 });
 

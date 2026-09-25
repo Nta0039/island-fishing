@@ -651,9 +651,10 @@ body.touch .ch-touch { display: block; }
   backdrop-filter: blur(4px);
 }
 .trade-card {
+  /* A strictly fixed frame: the panel keeps the same width and height no
+     matter which tab is showing or how long its list is. */
   width: min(94vw, 880px);
-  min-height: min(520px, 86vh);
-  max-height: 86vh;
+  height: min(560px, 86vh);
   display: flex;
   flex-direction: row;
   background: rgba(10, 24, 40, 0.97);
@@ -696,15 +697,20 @@ body.touch .ch-touch { display: block; }
 .trade-main {
   flex: 1;
   min-width: 0;
+  min-height: 0;
   display: flex;
   flex-direction: column;
 }
+
+/* The 3D preview only belongs to the Shop tab. The card keeps its fixed
+   frame, so hiding it never moves or resizes the panel. */
+.trade-card.preview-off .trade-preview { display: none; }
 
 @media (max-width: 720px) {
   .trade-card {
     flex-direction: column;
     width: min(94vw, 480px);
-    min-height: 0;
+    height: min(560px, 88vh);
   }
   .trade-preview {
     flex: 0 0 168px;
@@ -758,7 +764,8 @@ body.touch .ch-touch { display: block; }
   color: #04202f;
   border-color: transparent;
 }
-.trade-body { padding: 14px 16px 6px; overflow-y: auto; flex: 1; }
+/* The list scrolls inside the fixed frame when the items overflow it. */
+.trade-body { padding: 14px 16px 6px; overflow-y: auto; min-height: 0; flex: 1; }
 .trade-msg { min-height: 20px; padding: 4px 16px 12px; font-size: 12px; color: #7ef0b0; }
 .trade-msg.err { color: #ff8a8a; }
 
