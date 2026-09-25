@@ -129,7 +129,7 @@ button, input, textarea, select, a, label,
 }
 #topbar-left > * { pointer-events: auto; }
 
-#lang-btn {
+.lang-pill {
   display: flex;
   align-items: center;
   background: var(--ui-bg);
@@ -144,13 +144,21 @@ button, input, textarea, select, a, label,
   cursor: pointer;
   transition: background 0.15s, transform 0.12s;
 }
-#lang-btn:hover { background: rgba(255, 255, 255, 0.14); }
-#lang-btn:active { transform: scale(0.95); }
-#lang-btn .lang-sep { opacity: 0.35; margin: 0 3px; }
-#lang-btn .lang-en,
-#lang-btn .lang-zh { opacity: 0.5; }
-#lang-btn.en .lang-en,
-#lang-btn.zh .lang-zh { opacity: 1; color: #ffd97a; }
+.lang-pill:hover { background: rgba(255, 255, 255, 0.14); }
+.lang-pill:active { transform: scale(0.95); }
+.lang-pill .lang-sep { opacity: 0.35; margin: 0 3px; }
+.lang-pill .lang-en,
+.lang-pill .lang-zh { opacity: 0.5; }
+.lang-pill.en .lang-en,
+.lang-pill.zh .lang-zh { opacity: 1; color: #ffd97a; }
+
+/* Pre-game switch, pinned to the top-right of the naming screen. */
+#lang-btn-start {
+  position: fixed;
+  top: max(14px, env(safe-area-inset-top));
+  right: max(14px, env(safe-area-inset-right));
+  z-index: 60;
+}
 
 /* Player purse, shown beside the online count. */
 #coin-hud {

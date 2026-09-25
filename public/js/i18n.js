@@ -110,15 +110,25 @@ export const DICT = {
     'hint.telescopeTouch': 'Telescope — swipe to look around, tap to step back',
     'hint.telescopePc': 'Telescope — move the mouse to look around, Esc to step back',
     'hint.waiting': 'Line cast — waiting for a bite…',
-    'hint.bite': 'A bite! Work the line — Space or the reel button',
-    'hint.sunbathing': 'Sunbathing — press [Get up] or move to stand',
-    'hint.sitting': 'Resting on the bench — press [Stand] or move to get up',
-    'hint.telescope': 'Press [Use] to look through the telescope',
-    'hint.lounger': 'Press [Sunbathe] to lie back on the lounger',
-    'hint.seat': 'Press [Sit] to rest on the bench',
-    'hint.find': 'A beach find — press [Collect]',
-    'hint.merchant': 'Trade your catch with David',
-    'hint.water': 'Press [Fish] to cast your line',
+    /* Device-specific: PC names the key, touch names the button. */
+    'hint.bitePc': 'A bite! Work the line — hold [Space]',
+    'hint.biteTouch': 'A bite! Hold the reel button',
+    'hint.sunbathingPc': 'Sunbathing — press [E] or move to stand',
+    'hint.sunbathingTouch': 'Sunbathing — tap the button or move to stand',
+    'hint.sittingPc': 'Resting on the bench — press [E] or move to get up',
+    'hint.sittingTouch': 'Resting on the bench — tap the button or move to get up',
+    'hint.telescopeIdlePc': 'Press [E] to use the telescope',
+    'hint.telescopeIdleTouch': 'Tap the button to use the telescope',
+    'hint.loungerPc': 'Press [E] to lie back on the lounger',
+    'hint.loungerTouch': 'Tap the button to lie back on the lounger',
+    'hint.seatPc': 'Press [E] to sit on the bench',
+    'hint.seatTouch': 'Tap the button to sit on the bench',
+    'hint.findPc': 'A beach find — press [E] to collect',
+    'hint.findTouch': 'A beach find — tap the button to collect',
+    'hint.merchantPc': 'Press [E] to trade with David',
+    'hint.merchantTouch': 'Tap the button to trade with David',
+    'hint.waterPc': 'Press [F] to cast your line',
+    'hint.waterTouch': 'Tap the button to cast your line',
     'hint.full': 'Cooler full — {cap}/{cap}',
     'hint.fullMsg': 'Cooler full ({cap}/{cap}) — sell some fish to David before catching more.',
 
@@ -264,15 +274,24 @@ export const DICT = {
     'hint.telescopeTouch': '望远镜——滑动环顾，点击返回',
     'hint.telescopePc': '望远镜——移动鼠标环顾，按 Esc 返回',
     'hint.waiting': '已抛竿——等待鱼儿上钩…',
-    'hint.bite': '有鱼上钩了！收线——空格键或收线按钮',
-    'hint.sunbathing': '日光浴中——按 [起身] 或移动以站起',
-    'hint.sitting': '在长椅上休息——按 [站起] 或移动以起身',
-    'hint.telescope': '按 [使用] 透过望远镜观望',
-    'hint.lounger': '按 [晒太阳] 躺到躺椅上',
-    'hint.seat': '按 [坐下] 在长椅上休息',
-    'hint.find': '沙滩发现——按 [捡起]',
-    'hint.merchant': '和大卫交易你的渔获',
-    'hint.water': '按 [钓鱼] 抛出鱼线',
+    'hint.bitePc': '有鱼上钩了！按住 [空格键] 收线',
+    'hint.biteTouch': '有鱼上钩了！按住收线按钮',
+    'hint.sunbathingPc': '日光浴中——按 E 键或移动以站起',
+    'hint.sunbathingTouch': '日光浴中——按按钮或移动以站起',
+    'hint.sittingPc': '在长椅上休息——按 E 键或移动以起身',
+    'hint.sittingTouch': '在长椅上休息——按按钮或移动以起身',
+    'hint.telescopeIdlePc': '按 E 键使用望远镜',
+    'hint.telescopeIdleTouch': '按按钮使用望远镜',
+    'hint.loungerPc': '按 E 键躺到躺椅上',
+    'hint.loungerTouch': '按按钮躺到躺椅上',
+    'hint.seatPc': '按 E 键在长椅上休息',
+    'hint.seatTouch': '按按钮在长椅上休息',
+    'hint.findPc': '沙滩发现——按 E 键捡起',
+    'hint.findTouch': '沙滩发现——按捡起按钮',
+    'hint.merchantPc': '按 E 键和大卫交易',
+    'hint.merchantTouch': '按交易按钮和大卫交易',
+    'hint.waterPc': '按 F 键抛出鱼线',
+    'hint.waterTouch': '按钓鱼按钮抛出鱼线',
     'hint.full': '冷藏箱已满——{cap}/{cap}',
     'hint.fullMsg': '冷藏箱已满（{cap}/{cap}）——先卖些鱼给大卫再继续钓。',
 
@@ -407,12 +426,13 @@ export const DICT = {
 const listeners = new Set();
 
 function detect() {
+  /* The very first load is always English for everyone; a returning player
+     keeps whichever language they last chose. */
   try {
     const saved = localStorage.getItem(STORE_KEY);
     if (saved === 'en' || saved === 'zh') return saved;
   } catch (_) { /* ignore */ }
-  const nav = String((navigator && (navigator.language || navigator.userLanguage)) || 'en').toLowerCase();
-  return nav.startsWith('zh') ? 'zh' : 'en';
+  return 'en';
 }
 
 let locale = 'en';

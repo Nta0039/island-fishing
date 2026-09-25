@@ -1176,30 +1176,32 @@ function startMinigame() {
 
 function updateHint() {
   if (!joined) return;
+  /* PC hints name the key; touch hints name the on-screen button. */
+  const d = input.touch ? 'Touch' : 'Pc';
   if (telescopeMode) {
     UI.setHint(t(input.touch ? 'hint.telescopeTouch' : 'hint.telescopePc'));
   } else if (local.fishing === 'waiting') {
     UI.setHint(t('hint.waiting'));
   } else if (local.fishing === 'hooked') {
-    UI.setHint(t('hint.bite'));
+    UI.setHint(t('hint.bite' + d));
   } else if (local.fishing === 'minigame') {
     UI.setHint('');
   } else if (lyingChair) {
-    UI.setHint(t('hint.sunbathing'));
+    UI.setHint(t('hint.sunbathing' + d));
   } else if (sittingSeat) {
-    UI.setHint(t('hint.sitting'));
+    UI.setHint(t('hint.sitting' + d));
   } else if (nearTelescope()) {
-    UI.setHint(t('hint.telescope'));
+    UI.setHint(t('hint.telescopeIdle' + d));
   } else if (nearestChair()) {
-    UI.setHint(t('hint.lounger'));
+    UI.setHint(t('hint.lounger' + d));
   } else if (nearestSeat()) {
-    UI.setHint(t('hint.seat'));
+    UI.setHint(t('hint.seat' + d));
   } else if (nearCollectible()) {
-    UI.setHint(t('hint.find'));
+    UI.setHint(t('hint.find' + d));
   } else if (nearMerchant()) {
-    UI.setHint(t('hint.merchant'));
+    UI.setHint(t('hint.merchant' + d));
   } else {
-    UI.setHint(atWater() ? t('hint.water') : '');
+    UI.setHint(atWater() ? t('hint.water' + d) : '');
   }
 }
 

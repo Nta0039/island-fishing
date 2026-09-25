@@ -28,8 +28,10 @@ the same time.
   the sand, ships, aircraft, whales and dolphins offshore, and coral reefs below the waves.
 - **Beach loungers** with umbrellas — lie back and sunbathe, with your rod planted in the sand.
 - **Works on PC and mobile** — WASD or arrow keys on desktop, virtual joystick on touch.
-- **English & 简体中文** — a top-left EN / 中文 switch re-translates the whole UI
-  (menus, shop, prompts, NPC lines) instantly, with no reload.
+- **English & 简体中文** — an EN / 中文 switch on the naming screen (and in the
+  in-game top bar) re-translates the whole UI instantly, with no reload. The
+  game starts in English; prompts name the keyboard key on PC and the on-screen
+  button on touch.
 
 ---
 

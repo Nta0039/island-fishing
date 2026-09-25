@@ -86,17 +86,18 @@ export const dom = {
 /*  Language switch                                                    */
 /* ------------------------------------------------------------------ */
 
-/** Keeps the EN / 中文 pill showing which language is currently active. */
+/** Keeps every EN / 中文 pill (start screen + in-game) showing the active one. */
 export function syncLangButton() {
-  if (!dom.langBtn) return;
   const zh = getLocale() === 'zh';
-  dom.langBtn.classList.toggle('zh', zh);
-  dom.langBtn.classList.toggle('en', !zh);
+  for (const el of document.querySelectorAll('.lang-pill')) {
+    el.classList.toggle('zh', zh);
+    el.classList.toggle('en', !zh);
+  }
 }
 
-/** The top-left language toggle. The click handler flips the locale. */
+/** Wires every language toggle. The handler flips the locale. */
 export function onLangClick(handler) {
-  if (dom.langBtn) dom.langBtn.addEventListener('click', handler);
+  for (const el of document.querySelectorAll('.lang-pill')) el.addEventListener('click', handler);
 }
 
 onLocaleChange(syncLangButton);
